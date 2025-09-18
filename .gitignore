@@ -1,0 +1,14 @@
+# PowerShell/VSCode
+.vscode/
+*.pscache
+*.psd1.orig
+*.psm1.orig
+
+# Logs/Reports/Artifacts
+logs/
+reports/
+out/
+*.zip
+
+# PowerShell build artifacts
+*.nupkg
