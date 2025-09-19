@@ -1,38 +1,30 @@
+function Get-EotConfig {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('Dev','Test','Prod')]
+        [string]$Environment = 'Dev'
+    )
+    # $PSScriptRoot is ...\src
+    $srcDir = $PSScriptRoot
+    $repoRoot = Split-Path -Parent $srcDir
+    $configDir = Join-Path $repoRoot 'config'
+    $file = Join-Path $configDir ("{0}.json" -f $Environment.ToLower())
 
-    function ConvertTo-ReportHtml {
-        [CmdletBinding()]
-        param(
-            [Parameter(Mandatory)][string]$Title,
-            [Parameter(Mandatory)]$Data
-        )
-        $rows = $Data | ConvertTo-Html -Property * -Fragment
-        @"
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>$Title</title>
-<style>
-body { font-family: Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-table { border-collapse: collapse; width: 100%; }
-th, td { border: 1px solid #ddd; padding: 8px; }
-th { background: #f4f4f4; text-align: left; }
-h1 { margin-top: 0; }
-</style>
-</head>
-<body>
-<h1>$Title</h1>
-$rows
-</body>
-</html>
-"@
+    if (-not (Test-Path $file)) {
+        throw "Config not found at: $file"
     }
+    try {
+        return Get-Content -Path $file -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        throw "Failed to read/parse config file: $file. $_"
+    }
+}
 
 # SIG # Begin signature block
 # MIIb7AYJKoZIhvcNAQcCoIIb3TCCG9kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUntnNkng9fAxBbg+mrNLjyzKc
-# 3vSgghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSEGxYy2gmBIR1tF9t+zOMWv8
+# icCgghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
 # AQsFADAjMSEwHwYDVQQDDBhFbnRlcnByaXNlT3BzVG9vbGtpdCBEZXYwHhcNMjUw
 # OTE4MTkyNjAxWhcNMjYwOTE4MTk0NjAxWjAjMSEwHwYDVQQDDBhFbnRlcnByaXNl
 # T3BzVG9vbGtpdCBEZXYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC3
@@ -154,28 +146,28 @@ $rows
 # NXOCIUjsarfNZzGCBQIwggT+AgEBMDcwIzEhMB8GA1UEAwwYRW50ZXJwcmlzZU9w
 # c1Rvb2xraXQgRGV2AhAp6T2w4V12v089qv+zQKZzMAkGBSsOAwIaBQCgeDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQO
-# oCrZT9gd+rE/gCnCiqNTo5hRozANBgkqhkiG9w0BAQEFAASCAQBvM1tL9O4139eH
-# 1IKTjbo5FxL85TUIubvVX4iubOECMrtu6vlKZjlLZNVTwqjAHic2/LILlVZw+nIX
-# po8BFtrY3MuIysTKPxLAx2CQoxrs6tr9yvVEQ0xtFRHOJUAs/LCDHYuk8WsWgO6s
-# irrs7cTScRf6F06eZ3mJuD0XU/vXoZYkuWz7CT+P/ieWfD+3r/GkNYKAU8HraaQU
-# uYoC670lRQFTh01xZ8cZbZ/Ijtj3gdt/DLLGSwEUnJDEcGB0kxXL8SJenspfwLs2
-# 3odmsYXYYj7+XxVyq5gurKEjAAe1AffoW0+KRpWu+xZkOasO0obc4mHJRUNdsrGX
-# ErC6aRugoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRs
+# cUSwvtOhNjror7V1NeCTQiEIrjANBgkqhkiG9w0BAQEFAASCAQBfTS538GAi2f3L
+# Dmv/io7Sxy9glkuaC9Svp996Ed7/Ju5PwgSMCSXIF/XuA8Wugz1g7g/tuBfXtOU+
+# raDS21eks9snFXP5GhzPfVuCgmtonfkUqY08bOYWgX6z1tdlxERJ+sjHWlRJ6wPF
+# K0y1sbDXXFlytUNGQ/6l9UxF3tJlj3VaY7Ack+J0iOwtu0wRVFx3clNDmUp4otD8
+# dJQWQQV8dG3aZz2oGgsUH59niLeYMFCkd5tx9iLrtG78dVNAWCD8WBUWhpJ9kADc
+# a0nUucnlINvLkJL4TuzQWIihfjGBRQmk8XK9rWR63X1RanbAGNnyox1EexqG4WiP
+# bI4u3wyzoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
 # BhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMUEwPwYDVQQDEzhEaWdpQ2Vy
 # dCBUcnVzdGVkIEc0IFRpbWVTdGFtcGluZyBSU0E0MDk2IFNIQTI1NiAyMDI1IENB
 # MQIQCoDvGEuN8QWC0cR2p5V0aDANBglghkgBZQMEAgEFAKBpMBgGCSqGSIb3DQEJ
 # AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1MFowLwYJ
-# KoZIhvcNAQkEMSIEICaRU1Rn6qTpLXkzT011R2UvMbBA5xU2jGTgpeJfaeL3MA0G
-# CSqGSIb3DQEBAQUABIICAA4Yo2gp/ux9KX0Lphbs2x7K+ciUMUfU4nmChZACXApH
-# vKiVloS0N9lhKHGfqE3HBF8B5HPuHp/W2W9TIevy8hTeELgb8z2dMuKteyC4YpI/
-# LEwZqJ9o0vWm0Vvh2jY0cvFyDV3RcaYzkbFNsFfI6sIwgm0apHqZemUyhBX2Vsj2
-# JXz0NwW38lh2oFvH9kVukuT1bFsknVQA0Lk10sSV0mSAZrpEyqHqgJmVuV8XoBqi
-# nahkuHQo8DDRGIzapsEXPyFefHKhdfcHkBdNfFqqYpipKW93x2iHYv+fpoMp5zFq
-# OPBzEkQX927l+bnaZhdxMvZNHIoUlUU0yMn0+kmGuGsu7m7Bf/We9v3e5vQ9zCo7
-# ak5Q8Et6jbqcrqQVo2W0O4jd8IcUpzBrrSHbEjaI/uPCVBMBwd7v3GJfem6AhYX4
-# G8+D/cZYj6OD+h33xxa17iFEIVw7Nab07KBHTG/jmPHhYAuipcJODxR3VpU1p6fy
-# DFRXnzzucMx60mxmFnX1pt7hEdmC3sxYm8Gn7/C/1XIe8jPy9YiWd979h7g9/67s
-# FNYGprnkOAiAM1eKTP45nsfEt4TUxrGp0twljgSXgkZGcVx+dRi2DjHJERSD29jw
-# 8+lfDzVuDfoGRkU9Xw3pYPfRLhBBy/T4FKuoQRpo/eiOR8qGGkpjNB81mHWbreGI
+# KoZIhvcNAQkEMSIEIFvIt6rYK+9+3e5uRbWFGJejXdP0a0/0nyHOXxllvKloMA0G
+# CSqGSIb3DQEBAQUABIICAG8tLr62BTysaARLsZcSbWXHw98Lilfo0eizHXJ1OSWx
+# VxjuoAzfAPw4mVqBId5lpJBhKYWDx3kb24oIVTsm2KMZ71nDfkhNv3yy3kIAXKXg
+# b3YrlP4swbRlh+VP68iU6vCV3LzfYSSqDXTtNO8JRZ/JQ+PWhO6LtpPexIjy6hS5
+# hBnR3fZHsteu3MGy7OI8ZTL8wrJCg07GNDmJaEfzYvugD+9QWCViDxTOERjDK+du
+# fhoXhAVuAj59GAUvScGXpFxe6jriwwo8POef5wgtai0Jh2NRZEY+cRJUPUl/Y3/A
+# tr7zsG5AXLQkUDDcxVjK+J53zMiffw+uhUbimKWVgEobCoj2qowqYykCgHD02XF7
+# dONwFrZIAobpo9LAeA6HSwpCgc06njD6AuEtSn0uyojDggQ8/aAIv//+pgStGecd
+# 8A0wRmz7238+kyXSD9dqB2hwCJptTGeurdrmHZsJC8oGUbg1AUWpg2A9o2QMp/A6
+# nS6LqtqTqnoVd1jZVg63v3kDUmZkYjsBA83fY/7FJT9VS4LEOkKMwSD96w4J5HWJ
+# hNF+AD/syo3sultDwVXyzp+tR4SvT3H6lER6HkxBHA7twyw4N+mJtGAM+xLx2s5X
+# MpJll04zQv0nK1qgMSJhecG0K5b76yW79KN9eKMhMoonnCWptezmtn5DzuOgeiav
 # SIG # End signature block

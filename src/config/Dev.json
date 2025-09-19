@@ -1,0 +1,17 @@
+{
+  "TenantName": "contoso.onmicrosoft.com",
+  "TenantId": "00000000-0000-0000-0000-000000000000",
+  "AppId": "11111111-1111-1111-1111-111111111111",
+  "UseMockData": true,
+  "Intune": {
+    "BaselinePolicies": [
+      "BitLocker",
+      "Defender",
+      "UAC"
+    ]
+  },
+  "Exchange": {
+    "CheckForwarding": true,
+    "RequireLitigationHoldForVIP": true
+  }
+}

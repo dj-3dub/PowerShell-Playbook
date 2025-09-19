@@ -1,0 +1,34 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.eol": "\r\n",
+    "editor.formatOnSave": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.tabSize": 4,
+    "powershell.codeFormatting.preset": "OTBS",
+    "powershell.integratedConsole.showOnStartup": false,
+    "powershell.powerShellDefaultVersion": "PowerShell (x64)",
+    "powershell.scriptAnalysis.enable": true,
+    "powershell.scriptAnalysis.settingsPath": "${workspaceFolder}/.vscode/PSScriptAnalyzerSettings.psd1",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "git.confirmSync": false,
+    "git.enableCommitSigning": true
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.powershell",
+      "ms-azuretools.vscode-bicep",
+      "github.vscode-pull-request-github",
+      "eamodio.gitlens",
+      "ms-vsliveshare.vsliveshare",
+      "timonwong.shellcheck",
+      "yzhang.markdown-all-in-one"
+    ]
+  }
+}
