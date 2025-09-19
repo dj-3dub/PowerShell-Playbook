@@ -14,9 +14,9 @@ Windows 11 optimization → Debloat and hardening for enterprise readiness
 Safe testing modes → Audit Mode (preview only) and Remove Mode (applies changes)
 
 Consistent structure → Logging, config-driven design, and reusable modules
-
-Readable output → HTML reports for easy review and documentation
 ---
+Readable output → HTML reports for easy review and documentation
+
 📂 Example Scripts
 
 Get-EotConditionalAccessReport → Generate Conditional Access HTML reports
