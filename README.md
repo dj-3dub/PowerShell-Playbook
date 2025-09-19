@@ -1,7 +1,7 @@
 # ⚡ PowerShell Automation Toolkit
 
-A recruiter-friendly showcase of my **PowerShell scripting skills** — focused on automating tasks common in enterprise IT environments.  
-This toolkit demonstrates how I write, organize, and test scripts that solve real-world problems for **system administration, security, and Windows management**.
+A collection of PowerShell scripts focused on automating tasks common in enterprise IT environments.  
+This toolkit demonstrates how to write, organize, and test scripts that solve real-world problems for **system administration, security, and Windows management**.
 
 ---
 
