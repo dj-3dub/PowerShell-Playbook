@@ -1,26 +1,30 @@
-# EnterpriseOpsToolkit (PowerShell)
+# ⚡ PowerShell Automation Toolkit
 
-A production-style module + scripts that automate common enterprise IT tasks across Entra ID/Intune, Exchange Online, and Windows endpoints.
-- PS7-first, Windows-friendly (PS 5.1 supported where needed)
-- Config-driven (see `config/*.json`)
-- Safe-by-default (`-WhatIf`, `-Confirm`), RBAC pre-checks
-- Tests (Pester), lint (PSScriptAnalyzer), CI (GitHub Actions)
-- Structured logging → HTML report samples
+A recruiter-friendly showcase of my **PowerShell scripting skills** — focused on automating tasks common in enterprise IT environments.  
+This toolkit demonstrates how I write, organize, and test scripts that solve real-world problems for **system administration, security, and Windows management**.
 
-## Quick start (Windows)
-1. Install prerequisites (one-liner):
-   ```powershell
-   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
-   winget install --id Git.Git -e ; winget install --id Microsoft.VisualStudioCode -e ; winget install --id Microsoft.DotNet.SDK.8 -e
-   pwsh -NoLogo -NoProfile -Command "Set-PSRepository PSGallery -InstallationPolicy Trusted; Install-Module Pester,PSScriptAnalyzer,PlatyPS,Microsoft.Graph,ExchangeOnlineManagement -Scope CurrentUser -Force"
-   ```
-2. Open **VS Code** in this folder and trust the workspace.
-3. Run tests:
-   ```powershell
-   pwsh -c "Invoke-Pester -Path tests -CI"
-   ```
-4. Try a sample command (mock mode – no real cloud calls):
-   ```powershell
-   Import-Module ./src/EnterpriseOpsToolkit.psd1 -Force
-   Get-EotConditionalAccessReport -Environment Dev -OutputPath ./reports
-   ```
+---
+
+## 🚀 Features
+- Enterprise **automation scripts** (Intune baselines, Conditional Access reports, Exchange hygiene)
+- **Windows 11 debloat** and hardening for enterprise readiness
+- Consistent **logging**, **config-driven design**, and **report generation**
+- Supports **Audit Mode** (safe preview) and **Remove Mode** (applies changes)
+- Organized as a **PowerShell module** for reusability
+
+---
+
+## 📂 Example Scripts
+- `Get-EotConditionalAccessReport` → Generate Conditional Access HTML reports  
+- `Invoke-EotIntuneBaseline` → Apply Intune device baseline  
+- `Get-EotExchangeHygiene` → Scan Exchange Online for common misconfigurations  
+- `Debloat-Win11.ps1` → Remove consumer bloat + apply enterprise defaults  
+
+---
+
+## 🧰 Why This Repo?
+Recruiters and hiring managers often ask about my PowerShell skills.  
+This repo serves as a **portfolio project** to show:
+- I can **automate** routine admin tasks
+- I know how to structure **production-ready scripts**
+- I use **enterprise practices** like audit modes, HTML reporting, and config files
