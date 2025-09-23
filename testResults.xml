@@ -1,19 +1,145 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
-<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="2" errors="0" failures="1" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2025-09-18" time="12:03:06">
-  <environment machine-name="LAPTOP-6RPDMSHG" clr-version="9.0.8" platform="Microsoft Windows 11 Pro|C:\WINDOWS|\Device\Harddisk0\Partition3" user-domain="LAPTOP-6RPDMSHG" user="thesh" cwd="C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold" os-version="10.0.26100" nunit-version="2.5.8.0" />
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="15" errors="0" failures="15" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2025-09-23" time="12:25:34">
+  <environment user-domain="LAPTOP-6RPDMSHG" nunit-version="2.5.8.0" platform="Microsoft Windows 11 Pro|C:\WINDOWS|\Device\Harddisk0\Partition3" clr-version="9.0.8" os-version="10.0.26100" cwd="C:\Users\thesh\Downloads\PowerShell-Playbook" user="thesh" machine-name="LAPTOP-6RPDMSHG" />
   <culture-info current-culture="en-US" current-uiculture="en-US" />
-  <test-suite type="TestFixture" name="Pester" executed="True" result="Failure" success="False" time="3.2243" asserts="0" description="Pester">
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Failure" success="False" time="4.63" asserts="0" description="Pester">
     <results>
-      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold\tests\EnterpriseOpsToolkit.Tests.ps1" executed="True" result="Failure" success="False" time="3.2243" asserts="0" description="C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold\tests\EnterpriseOpsToolkit.Tests.ps1">
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\IdentityGovernance.Tests.ps1" executed="True" result="Failure" success="False" time="2.7793" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\IdentityGovernance.Tests.ps1">
         <results>
-          <test-suite type="TestFixture" name="EnterpriseOpsToolkit basics" executed="True" result="Failure" success="False" time="1.0304" asserts="0" description="EnterpriseOpsToolkit basics">
+          <test-suite type="TestFixture" name="Identity Governance" executed="True" result="Failure" success="False" time="0" asserts="0" description="Identity Governance">
             <results>
-              <test-case description="exports key functions" name="EnterpriseOpsToolkit basics.exports key functions" time="0.712" asserts="0" success="True" result="Success" executed="True" />
-              <test-case description="generates CA report (mock)" name="EnterpriseOpsToolkit basics.generates CA report (mock)" time="0.0757" asserts="0" success="False" result="Failure" executed="True">
+              <test-case description="Produces an inactive accounts report (mock on Linux)" name="Identity Governance.Produces an inactive accounts report (mock on Linux)" time="0" asserts="0" success="False" result="Failure" executed="True">
                 <failure>
-                  <message>ItemNotFoundException: Cannot find path 'C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold\src\config\Dev.json' because it does not exist.</message>
-                  <stack-trace>at Get-EotConditionalAccessReport&lt;Begin&gt;, C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold\src\Public\Get-EotConditionalAccessReport.ps1:14
-at &lt;ScriptBlock&gt;, C:\Users\thesh\Downloads\EnterpriseOpsToolkit_scaffold\tests\EnterpriseOpsToolkit.Tests.ps1:13</stack-trace>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="Builds password expiry notifications in Preview mode" name="Identity Governance.Builds password expiry notifications in Preview mode" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\LocalAdminAudit.Tests.ps1" executed="True" result="Failure" success="False" time="0.6436" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\LocalAdminAudit.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Local Admin Audit" executed="True" result="Failure" success="False" time="0.4791" asserts="0" description="Local Admin Audit">
+            <results>
+              <test-case description="exports Get-LocalAdminAudit" name="Local Admin Audit.exports Get-LocalAdminAudit" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="produces data and writes a report on Windows" name="Local Admin Audit.produces data and writes a report on Windows" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\Manifest.Tests.ps1" executed="True" result="Failure" success="False" time="0.365" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\Manifest.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Module manifest" executed="True" result="Failure" success="False" time="0" asserts="0" description="Module manifest">
+            <results>
+              <test-case description="exists" name="Module manifest.exists" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="RootModule points to the psm1" name="Module manifest.RootModule points to the psm1" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="FunctionsToExport is array or '*'" name="Module manifest.FunctionsToExport is array or '*'" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\ModuleLoad.Tests.ps1" executed="True" result="Failure" success="False" time="0.1916" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\ModuleLoad.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Module loads and commands are exported" executed="True" result="Failure" success="False" time="0" asserts="0" description="Module loads and commands are exported">
+            <results>
+              <test-case description="imports the module without error" name="Module loads and commands are exported.imports the module without error" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="exports the expected functions (at least these)" name="Module loads and commands are exported.exports the expected functions (at least these)" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\Reports.Tests.ps1" executed="True" result="Failure" success="False" time="0.3387" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\Reports.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Report generation (mock)" executed="True" result="Failure" success="False" time="0" asserts="0" description="Report generation (mock)">
+            <results>
+              <test-case description="writes Conditional Access report HTML" name="Report generation (mock).writes Conditional Access report HTML" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="writes Exchange hygiene report HTML" name="Report generation (mock).writes Exchange hygiene report HTML" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+      <test-suite type="TestFixture" name="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\WindowsOnly.Tests.ps1" executed="True" result="Failure" success="False" time="0.3118" asserts="0" description="C:\Users\thesh\Downloads\PowerShell-Playbook\tests\WindowsOnly.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Windows-only commands behave" executed="True" result="Failure" success="False" time="0" asserts="0" description="Windows-only commands behave">
+            <results>
+              <test-suite type="TestFixture" name="Windows-only commands behave.On Windows only" executed="True" result="Failure" success="False" time="0" asserts="0" description="Windows-only commands behave.On Windows only">
+                <results>
+                  <test-case description="Defender report file exists" name="Windows-only commands behave.On Windows only.Defender report file exists" time="0" asserts="0" success="False" result="Failure" executed="True">
+                    <failure>
+                      <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                      <stack-trace />
+                    </failure>
+                  </test-case>
+                </results>
+              </test-suite>
+              <test-case description="Get-DefenderStatus does not throw" name="Windows-only commands behave.Get-DefenderStatus does not throw" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="Invoke-WinGetBaseline audits or installs without throwing" name="Windows-only commands behave.Invoke-WinGetBaseline audits or installs without throwing" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
+                </failure>
+              </test-case>
+              <test-case description="Collect-SupportBundle creates or skips without throwing" name="Windows-only commands behave.Collect-SupportBundle creates or skips without throwing" time="0" asserts="0" success="False" result="Failure" executed="True">
+                <failure>
+                  <message>This test should run but it did not. Most likely a setup in some parent block failed.</message>
+                  <stack-trace />
                 </failure>
               </test-case>
             </results>

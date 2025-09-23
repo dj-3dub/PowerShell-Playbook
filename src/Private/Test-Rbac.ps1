@@ -7,7 +7,7 @@ function Test-Rbac {
     )
 
     $hasConfig = $null -ne $Config
-    Write-EotLog -Level Info -Message "RBAC check (mock)" -Data @{
+    Write-ToolkitLog -Level Info -Message "RBAC check (mock)" -Data @{
         Area      = $Area
         HasConfig = $hasConfig
     }
@@ -165,3 +165,4 @@ function Test-Rbac {
 # 1YijXxoadg2fkYDkXxNxR+CodUn/NudVXx/G1KsgXq/u0wAACIPb0SZKmIxjsGkX
 # jZ5bLPL6RfaWQ+ZLwSY25bH5CuL4vw7t+p7nnu4UeqvDi5PEwo95yYf9DB9TyLU9
 # SIG # End signature block
+

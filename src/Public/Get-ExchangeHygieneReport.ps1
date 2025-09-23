@@ -1,15 +1,68 @@
+function Get-ExchangeHygieneReport {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('Dev','Test','Prod')]
+        [string]$Environment = 'Dev',
 
-# Dot-source Private helpers
-Get-ChildItem -Path $PSScriptRoot/Private -Filter *.ps1 | ForEach-Object { . $_.FullName }
+        [Parameter(Mandatory=$false)]
+        [string]$OutputPath = './reports'
+    )
 
-# Dot-source Public functions
-Get-ChildItem -Path $PSScriptRoot/Public -Filter *.ps1 | ForEach-Object { . $_.FullName }
+    begin {
+        $cfg = Get-EotConfig -Environment $Environment
+        New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
+        Write-ToolkitLog -Level Info -Message "EXO hygiene start" -Data @{ Env=$Environment }
+    }
+    process {
+        $rows = $null
+        $usedMock = $false
+        try {
+            if ($cfg.UseMockData) { throw "Mock mode enabled" }
+            if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) { throw "ExchangeOnlineManagement not installed" }
+
+            if (-not (Get-PSSession | Where-Object { $_.ComputerName -like "*.outlook.com" })) {
+                Connect-ExchangeOnline -ShowBanner:$false | Out-Null
+            }
+
+            $mailboxes = Invoke-WithRetry {
+                Get-EXOMailbox -ResultSize 1000 -PropertySets Quota, Archive, LitigationHold
+            }
+
+            $rows = $mailboxes | Select-Object `
+                UserPrincipalName,
+                DisplayName,
+                @{n='ExternalForward';e={$null -ne $_.ForwardingSmtpAddress}},
+                @{n='ForwardingSmtpAddress';e={$_.ForwardingSmtpAddress}},
+                @{n='LitigationHold';e={$_.LitigationHoldEnabled}},
+                @{n='ProhibitSendQuotaGB';e={[math]::Round(($_.ProhibitSendQuota.Value.ToBytes() / 1GB),2)}},
+                @{n='TotalItemSizeGB';e={
+                    try { [math]::Round(($_.TotalItemSize.Value.ToBytes() / 1GB),2) } catch { $null }
+                }}
+        } catch {
+            $usedMock = $true
+            Write-ToolkitLog -Level Warn -Message "Falling back to mock EXO data" -Data @{ Reason = $_.Exception.Message }
+            $rows = @(
+                [PSCustomObject]@{ Mailbox='vip@contoso.com'; ExternalForward=$false; ForwardingSmtpAddress=$null; LitigationHold=$true; ProhibitSendQuotaGB=50; TotalItemSizeGB=18.4 },
+                [PSCustomObject]@{ Mailbox='user@contoso.com'; ExternalForward=$true; ForwardingSmtpAddress='external@example.com'; LitigationHold=$false; ProhibitSendQuotaGB=50; TotalItemSizeGB=7.2 }
+            )
+        }
+
+        $title = "Exchange Hygiene ($Environment){0}" -f ($(if($usedMock){" [MOCK]"}else{""}))
+        $html = ConvertTo-ReportHtml -Title $title -Data $rows
+        $outFile = Join-Path $OutputPath ("ExchangeHygiene-{0}.html" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
+        $html | Out-File -FilePath $outFile -Encoding UTF8
+        Write-Output $outFile
+    }
+    end {
+        Write-ToolkitLog -Level Info -Message "EXO hygiene complete" -Data @{ Env=$Environment }
+    }
+}
 
 # SIG # Begin signature block
 # MIIb7AYJKoZIhvcNAQcCoIIb3TCCG9kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU16DOp0kcP7JfS54vddbGsTwq
-# IlegghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUdR4pIngJ/TlNuyH+GhMnXqAt
+# rc2gghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
 # AQsFADAjMSEwHwYDVQQDDBhFbnRlcnByaXNlT3BzVG9vbGtpdCBEZXYwHhcNMjUw
 # OTE4MTkyNjAxWhcNMjYwOTE4MTk0NjAxWjAjMSEwHwYDVQQDDBhFbnRlcnByaXNl
 # T3BzVG9vbGtpdCBEZXYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC3
@@ -131,28 +184,30 @@ Get-ChildItem -Path $PSScriptRoot/Public -Filter *.ps1 | ForEach-Object { . $_.F
 # NXOCIUjsarfNZzGCBQIwggT+AgEBMDcwIzEhMB8GA1UEAwwYRW50ZXJwcmlzZU9w
 # c1Rvb2xraXQgRGV2AhAp6T2w4V12v089qv+zQKZzMAkGBSsOAwIaBQCgeDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSa
-# 6KcMTETg9eCwvdWOdzuY8J6WuDANBgkqhkiG9w0BAQEFAASCAQATBgemI6wZP0gV
-# fVH8dDu3AoyVXK4fcWRmKpfHeK1/Yn0WofTyeVDGZE3WPvuqtCaLYV0ZUbw5cLun
-# fwuHH9T/cidsLdvliqSux6oTF3kyN3MlqsUWeJDbWzoftx2fL9H1e/HzKE2MhC6B
-# gcnnBvr3qQS0P8Wwytz5yB25pHEUQXG23swn7J8aOl2LrhyFD4FQXtax4n8dFpL9
-# st76mK+LAdJ5lzXcdaz7acjZX32xA+nuNERwLEGg4+3sMnBZqzL7/YqaHZlhBh0W
-# ByO1IYScu3DvooXkE0NqW2+wRsN/sOMPD5NrYdoOIkzg4/z7oydKuE2ApOagGeT1
-# uxsCs2bOoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRz
+# i20t9CNx1icTeN5wHnpG9d9laDANBgkqhkiG9w0BAQEFAASCAQAXBgVrASxmdO/l
+# WI6pQfumtdA01Czth4HUc11/lYxrkKm4KXa+EKPAQJJMCJL87lxyYQgUW56c5Qsv
+# uAUJRWZufgPUQPy7+bIfBxHa/F117C5FRobj0UJPzlbzMg4R9DlzObwYQzNtwd/D
+# /ivs4gd2FPKQ9WRqJN++sMaWpnOgfV2uTq3nC1Z71w9LA5a06l3/RsW0vfmqVuAO
+# cq2WC6oXcyHrEt7SjVevKG8oXsefihiCHu6/EHlcJ3razzkHsChyXjIzWvtjvVDo
+# IFJg+J2H74JSDvq7/yJGZV+5ni2OGwg0xcgWoMPMk245f0lKfysBgrK3b+fm1MK1
+# 5NCQ1W+SoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
 # BhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMUEwPwYDVQQDEzhEaWdpQ2Vy
 # dCBUcnVzdGVkIEc0IFRpbWVTdGFtcGluZyBSU0E0MDk2IFNIQTI1NiAyMDI1IENB
 # MQIQCoDvGEuN8QWC0cR2p5V0aDANBglghkgBZQMEAgEFAKBpMBgGCSqGSIb3DQEJ
-# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1NFowLwYJ
-# KoZIhvcNAQkEMSIEINI9pi/cc1oJMgsi7OAqVh1USULSBdBZ7kt6cfdqMshNMA0G
-# CSqGSIb3DQEBAQUABIICAI1DG+nSWXVnPDnWK2uQIc+7R6yycF0HqHj0io3VnM1r
-# a0nDRj0HXFDTUary+y+S4WxJHz9pGhFNQtsgUNcrHs8GctRPz1VzKlJA71FfX+rp
-# Lxb+loi2gzarVdMYuCwmowh5wzG9v5RDGZOkauHM3POX7hOeiadhUBIcCh6d/3Yh
-# HU6HZUtOMGMTdQwgq9ouDoCS9kuD9yLgfodFMCYSmotNXGCC/MRN95D1eMqvHykH
-# lNPFAwak4r6lU5tjrZkMt7Mxj3NjN34ZPifUKmwCjk8zJtVeX4fB27WmW+ROYcum
-# lZLMyPq1anLGUwiNZgVS+I/ZOo/pNt4bcVHdiw4M2V7MPNtsjPUUG3La3aOxYJkE
-# jDz0SSBUr+WqYQmYMOeQhy5tk5rTa8AdAo+8ouTA5F9soJkIqp+SPQ3TUtQ00rut
-# MVdArn6kFLP+hRSVLrNRvavxOkovo2HSpZ+NFt8B4dmREklm1n9z7El+6RKpxgzY
-# 7s266WfhUcDwH+0nodq/RNT0msrdy5DsxjHLRVkzgFiRKy2Hq5rxsbuJwnvU8imA
-# vO8wvvEGEfaxE9uW71pZXBU0e7ZYQtwbRG55rDifZkQsfD8jis05uQ6NirQA7Y+f
-# JVCq8kWWNGYHUxdc/PQrqZIIVufrqAP7XLEDer/r0siErtug205cABKpNAcj+Sdu
+# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1M1owLwYJ
+# KoZIhvcNAQkEMSIEIAC2SrNfRjRhllacc03jHzbwB8UsNP8CwOK+TMWcOBqoMA0G
+# CSqGSIb3DQEBAQUABIICAMaeQP534VND9FMGQYdrl3QOqigYDTwGyiFxnCCJfKDB
+# Spefdd+BZdyInwiCSDXYw1kcR8PXN6DMSUokTGTyYsEHFV1wsuXp+MgAiyIAchSR
+# WQ/RetKrf/ZKLOvO911O1f8vX2lKTz1yRRatGUSI08sldcvJW2ueNRhnrhs5oIHz
+# vBF4rzAcBv3D5ToIjx4eNfaKp6R0G01QTtRvItgh2ZNJnxvdbI8E+Z79NzbYX5eo
+# gxDPWQXbQ8mY7bUIXfl884mJrr2tylGITzx7LfiN9QygJh4QkcD1qx5mCjTFzpHS
+# mQWOzXPwTl+AxsB9rOLSH0SwwQqLGkQuR2+q3Ymo0p3HDkrv5Sf0Wt7xmksYCn6B
+# jFeP9aeEixFLW+n/U3X+s0R0bqiJfYoxL4c0FsWI/OUUlQ1A0oUg6b5AToE/wvWi
+# XEXX1roEM/9gYx/koArWrd5o/uR1qR6VFJVm4VzN6mTymYGCbJj7Lw4k6R3YNlsq
+# XYS3/10mwqDd7BuLO7Ww/wwzLzptMkOMChJRNKC/rlLSuu+2cXkRSROxIwvqO5k3
+# B/Xppg5c8CmihKDhHgQ5X4YE3WYbzZ+Rb50KaeiCfZAvWkSAH4tEg9MXG40yyx7Q
+# 0t+duSkzsVTn5b/KtZimaNLhef9JHq5kHNyPAHJElgTybZWzPa4uTc22fIauiC4n
 # SIG # End signature block
+
+
