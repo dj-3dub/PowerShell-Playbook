@@ -1,28 +1,70 @@
-function Write-EotLog {
-    [CmdletBinding()]
+function Invoke-IntuneBaseline {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact='Medium')]
     param(
-        [ValidateSet('Debug','Info','Warn','Error')]
-        [string]$Level = 'Info',
-        [string]$Message,
-        [hashtable]$Data
+        [ValidateSet('Dev','Test','Prod')]
+        [string]$Environment = 'Dev',
+
+        [int]$ThrottleLimit = 16,
+
+        [switch]$Enforce
     )
-    $entry = [PSCustomObject]@{
-        ts      = (Get-Date).ToString('o')
-        level   = $Level
-        message = $Message
-        data    = $Data
+
+    begin {
+        $cfg = Get-EotConfig -Environment $Environment
+
+        Write-ToolkitLog -Level Info -Message "Intune baseline start" -Data @{
+            Env     = $Environment
+            Enforce = $Enforce.IsPresent
+            Mock    = $cfg.UseMockData
+        }
+
+        if ($cfg.UseMockData) {
+            $script:Devices = @(
+                [PSCustomObject]@{ deviceName='PC-001'; compliant=$true },
+                [PSCustomObject]@{ deviceName='PC-002'; compliant=$false }
+            )
+        } else {
+            # TODO: implement real device fetch (Graph/Intune)
+            Write-ToolkitLog -Level Warn -Message "Non-mock Intune device path not implemented yet; using empty set."
+            $script:Devices = @()
+        }
     }
-    $dir = './logs/{0}' -f (Get-Date -Format 'yyyy-MM-dd')
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    $entry | ConvertTo-Json -Depth 5 | Add-Content -Path (Join-Path $dir 'run.jsonl')
-    if ($Level -eq 'Error') { Write-Error $Message } else { Write-Verbose ($Message) -Verbose }
+
+    process {
+        $scriptBlock = {
+            param($d, $enforce)
+            $result = [PSCustomObject]@{
+                DeviceName = $d.deviceName
+                Compliant  = $d.compliant
+                Remediated = $false
+            }
+            if (-not $d.compliant -and $enforce) {
+                if ($PSCmdlet.ShouldProcess($d.deviceName, "Remediate baseline drift")) {
+                    Start-Sleep -Milliseconds 100
+                    $result.Remediated = $true
+                }
+            }
+            return $result
+        }
+
+        $results = $script:Devices | ForEach-Object -Parallel $scriptBlock -ThrottleLimit $ThrottleLimit -ArgumentList $Enforce.IsPresent
+        $html = ConvertTo-ReportHtml -Title "Intune Baseline ($Environment)" -Data $results
+        $outFile = Join-Path './reports' ("IntuneBaseline-{0}.html" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
+        New-Item -ItemType Directory -Force -Path './reports' | Out-Null
+        $html | Out-File -FilePath $outFile -Encoding UTF8
+        Write-Output $outFile
+    }
+
+    end {
+        Write-ToolkitLog -Level Info -Message "Intune baseline complete" -Data @{ Env=$Environment; Enforce=$Enforce.IsPresent }
+    }
 }
 
 # SIG # Begin signature block
 # MIIb7AYJKoZIhvcNAQcCoIIb3TCCG9kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQdDSC1KplmViWGXQsj/sEUHz
-# o0ygghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU8PtNotYwsl+mrksKUoeflC7y
+# /HagghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
 # AQsFADAjMSEwHwYDVQQDDBhFbnRlcnByaXNlT3BzVG9vbGtpdCBEZXYwHhcNMjUw
 # OTE4MTkyNjAxWhcNMjYwOTE4MTk0NjAxWjAjMSEwHwYDVQQDDBhFbnRlcnByaXNl
 # T3BzVG9vbGtpdCBEZXYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC3
@@ -144,28 +186,30 @@ function Write-EotLog {
 # NXOCIUjsarfNZzGCBQIwggT+AgEBMDcwIzEhMB8GA1UEAwwYRW50ZXJwcmlzZU9w
 # c1Rvb2xraXQgRGV2AhAp6T2w4V12v089qv+zQKZzMAkGBSsOAwIaBQCgeDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTt
-# UisEtkvJDLfMr3BEudle9Zq/NjANBgkqhkiG9w0BAQEFAASCAQCWyMC0pGfnCaGH
-# gXVqTWAX16abdZ8WZCX2ctYcQQ+6aKxAfK0aitorgLhRDSB0tiTd5ATd5mZhVSD5
-# PKQLW52H0+W//2BaRBuq7kzZUW4H1YX6+VOZIz5fBHCgsWqKThYzcaT4wGjKmdRC
-# fQiGhQcHKGTamySmCDfB3zGF+cR7IRQi3nya4RZ/GyrrSGqip5HeDWbXRaypLZM0
-# XnLZwwBtnJsBv5OWLQLsF6c+xXLej6LG18r4/MOb8Nficp4uBZTbjv4v0iy05gtD
-# uX55/N6exqAtqy86FAJ92aBHbU+IQ4ghRtwwf6ZJcyQhTVI6eNxVpL8/D62fOdjp
-# Ay+btlkRoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS5
+# f23H5U+ERRaO8d89+Zst54HhDDANBgkqhkiG9w0BAQEFAASCAQCGltKPF5sT6B2F
+# Ya5UEnwG0HOzyefLWKiE8akodqC2V4URIY6hTYaxPtEkM/05cyNjpS5DFw/rSuwB
+# dqLmIrHZRNtdIO1XgzzA4TEvi9Oz8wWsAwuGVb8gg6D31RrJuXc9AefUHSk/IQ9t
+# hCovXZmT/EIhlHRCJ3JdBpQ2uia5PrMChhw3qFpWjSaWLMdIuJqvCCU0DdBqIr3u
+# lScMkpO93CDZLQPsMl5dARruljmCFF2PWwKMpglqjWHHtsI0nnK3YaE8zIkcScZr
+# NKsLn/T6kA9PibeccBaEznBtCPAY/NMkZnyOlEEDKgAFplVkr75wVbxIirDdGKt4
+# N0KomVdSoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
 # BhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMUEwPwYDVQQDEzhEaWdpQ2Vy
 # dCBUcnVzdGVkIEc0IFRpbWVTdGFtcGluZyBSU0E0MDk2IFNIQTI1NiAyMDI1IENB
 # MQIQCoDvGEuN8QWC0cR2p5V0aDANBglghkgBZQMEAgEFAKBpMBgGCSqGSIb3DQEJ
-# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1MlowLwYJ
-# KoZIhvcNAQkEMSIEIE2iNT2/129IEqRZS0sT8jU+AdQFzFJQCPIW78CNOnJEMA0G
-# CSqGSIb3DQEBAQUABIICAFpY9Nh6D6R79SKhY1LdroMLxBDL7ME7FyqCy0/M8QSi
-# CNyz3gr7ZgIWXK871fSqnzxkPq1DXSUy4U3HKwq34SPEgmx9GvypRgCOImuekpXg
-# DuRAGpJ2xSOIDkmR12n0z9M5nuLBjl90e+StGL/SAZ2dPSBCh88loj+oh/I5IRi2
-# KX9g7ez6CT0Wu7mOyFTuIaGKzVf1Nj40mBHCQZMt/NLlGYHDJh0s1GRZ10s363XU
-# gbDD25t29tDQO/QSf7ySyUZcBTjqN8KOh8QR5ZN3fzzPDFmmP4aqIRbW3e1MJ1d9
-# TCVyBupbjt44W5CjngxhgoAawo4A+m1PVuMKSiVsxwdBH7L8ZxOzV73WKNe9Hu7U
-# iWdAR/rRTwH5I295WU+xGkjyeM8NlBsWHmBdtYexONVaJ69VzUQGI8wIKss1WyKG
-# RbX1uEqt3ZVY5gaQ7nBKGFKXOvzvi/JXvMtK/TknCPzWVFjI5qTdnHcjslwXhhR7
-# +t0i/mdNMeuz885Nd85XXE1cjRc2XF5obvlR6hA2m+IloMKQL4gSNCe295/mmBSW
-# JfmSYuKQr2B1Klm8zi/M3NB2M1E3DitBPpSRMKRi4VZd2MvRxDHw/1qnhUNPR3Aa
-# wtLcHKRgeK+hpWsK4JK4laRVF0hspFQkkYsHJ5eKFA62dXeJ70qOiaF06lgVl3x8
+# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1M1owLwYJ
+# KoZIhvcNAQkEMSIEINROO0dubGxMTsqLcyWmD00Z8UAf5TtxBglouqvfQcfIMA0G
+# CSqGSIb3DQEBAQUABIICACz0p8GK0lCpaeZus6N8bwQY97GY6mBkPFs30Lyu829s
+# rsuPlH8h5WXHsGCLbFdi/vxgj+yHPBTpKtIQF/9z3ODAJ5mYlBGOUnE9thd8or6a
+# hn/TKYCnDzkVrl6tGoCmZLtMBc5YQxMwt+bnx9j0n+lBbrB3gSW6jnNxAP6tYGy2
+# rDN+aRodVta4knt4y5vyWrEgqo59Hapybno58Ngz3+IQBjXtzAOoqkiwkz4JdQSA
+# 5+cJqyEa+i6WZUH9zshk+iLMAug1RfvM1SvLOwtyzrU1L34RZdOzmYLzz9GK1nub
+# HsuNxfPn8g0tK62WrS2V2jyUx3Jhed+0+vlRqhvnM9H+QrCGo6WyXDhZeJymv/9t
+# lZSqGH6nosV64QbG1yOoUV6Pzn/eKUAHDCaau43Q03UjGdaS5nu3yrxFXTDpZ3Kw
+# NoborEYHnyAFXmfIzo67DSNM6WgWLiy5//gbGNJXf31VM5U0t+8z+agOMIJPtHK8
+# bzJndzFBYS51Xn3Q52mUNsziFW7qQrPQaRy4KtFUA1AVNaCgGXOqBRcuwBCGSOUw
+# InPG8CAOZTo1s1N+/RdFpFdg4gxXyrg/6Q8YU12+4QRSdr4HF5Oe7vfV95DOQU9/
+# tX/+Ye6j2nwGg1uUMWBW27zZx7XmgUw/SeBA4MR3mQPATJ6uOX/qXvps2VAnxo/l
 # SIG # End signature block
+
+

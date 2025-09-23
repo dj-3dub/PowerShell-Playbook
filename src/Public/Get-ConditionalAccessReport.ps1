@@ -1,70 +1,72 @@
-function Invoke-EotIntuneBaseline {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact='Medium')]
+function Get-ConditionalAccessReport {
+    [CmdletBinding()]
     param(
         [ValidateSet('Dev','Test','Prod')]
         [string]$Environment = 'Dev',
 
-        [int]$ThrottleLimit = 16,
-
-        [switch]$Enforce
+        [Parameter(Mandatory=$false)]
+        [string]$OutputPath = './reports'
     )
 
     begin {
         $cfg = Get-EotConfig -Environment $Environment
-
-        Write-EotLog -Level Info -Message "Intune baseline start" -Data @{
-            Env     = $Environment
-            Enforce = $Enforce.IsPresent
-            Mock    = $cfg.UseMockData
-        }
-
-        if ($cfg.UseMockData) {
-            $script:Devices = @(
-                [PSCustomObject]@{ deviceName='PC-001'; compliant=$true },
-                [PSCustomObject]@{ deviceName='PC-002'; compliant=$false }
-            )
-        } else {
-            # TODO: implement real device fetch (Graph/Intune)
-            Write-EotLog -Level Warn -Message "Non-mock Intune device path not implemented yet; using empty set."
-            $script:Devices = @()
-        }
+        New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
+        Write-ToolkitLog -Level Info -Message "CA report start" -Data @{ Env=$Environment }
     }
-
     process {
-        $scriptBlock = {
-            param($d, $enforce)
-            $result = [PSCustomObject]@{
-                DeviceName = $d.deviceName
-                Compliant  = $d.compliant
-                Remediated = $false
+        $policies = $null
+        $usedMock = $false
+        try {
+            if ($cfg.UseMockData) { throw "Mock mode enabled" }
+            if (-not (Get-Module Microsoft.Graph -ListAvailable)) { throw "Microsoft.Graph module not installed" }
+
+            if (-not (Get-MgContext)) {
+                Connect-MgGraph -Scopes "Policy.Read.All","Directory.Read.All" | Out-Null
+                Select-MgProfile -Name "beta"
             }
-            if (-not $d.compliant -and $enforce) {
-                if ($PSCmdlet.ShouldProcess($d.deviceName, "Remediate baseline drift")) {
-                    Start-Sleep -Milliseconds 100
-                    $result.Remediated = $true
+            Import-Module Microsoft.Graph.Identity.SignIns -ErrorAction Stop
+
+            $policies = Invoke-WithRetry {
+                Get-MgIdentityConditionalAccessPolicy -All
+            }
+
+            $policies = $policies | ForEach-Object {
+                [PSCustomObject]@{
+                    Name      = $_.DisplayName
+                    State     = $_.State
+                    AppliesTo = ($_.Conditions.Users.IncludeUsers -join ',')
+                    Controls  = @(
+                        if ($_.GrantControls) { 'Grant:' + ($_.GrantControls.BuiltInControls -join '+') }
+                        if ($_.SessionControls) { 'Session:' + ($_.SessionControls.Keys -join '+') }
+                    ) -join ' | '
+                    Id        = $_.Id
                 }
             }
-            return $result
+        } catch {
+            $usedMock = $true
+            Write-ToolkitLog -Level Warn -Message "Falling back to mock CA data" -Data @{ Reason = $_.Exception.Message }
+            $policies = @(
+                [PSCustomObject]@{ Name='Require MFA for Admins'; State='Enabled'; AppliesTo='Admins'; Controls='Grant:MFA'; Id='mock-1' },
+                [PSCustomObject]@{ Name='Block Legacy Auth'; State='Enabled'; AppliesTo='All Users'; Controls='Grant:Block Legacy'; Id='mock-2' }
+            )
         }
 
-        $results = $script:Devices | ForEach-Object -Parallel $scriptBlock -ThrottleLimit $ThrottleLimit -ArgumentList $Enforce.IsPresent
-        $html = ConvertTo-ReportHtml -Title "Intune Baseline ($Environment)" -Data $results
-        $outFile = Join-Path './reports' ("IntuneBaseline-{0}.html" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
-        New-Item -ItemType Directory -Force -Path './reports' | Out-Null
+        $title = "Conditional Access Report ($Environment){0}" -f ($(if($usedMock){" [MOCK]"}else{""}))
+        $html = ConvertTo-ReportHtml -Title $title -Data $policies
+        $outFile = Join-Path $OutputPath ("ConditionalAccess-{0}.html" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
         $html | Out-File -FilePath $outFile -Encoding UTF8
         Write-Output $outFile
     }
-
     end {
-        Write-EotLog -Level Info -Message "Intune baseline complete" -Data @{ Env=$Environment; Enforce=$Enforce.IsPresent }
+        Write-ToolkitLog -Level Info -Message "CA report complete" -Data @{ Env=$Environment }
     }
 }
 
 # SIG # Begin signature block
 # MIIb7AYJKoZIhvcNAQcCoIIb3TCCG9kCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU8PtNotYwsl+mrksKUoeflC7y
-# /HagghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXc7LvQTmIv57/3+PUxY9q5cF
+# iMGgghZUMIIDFjCCAf6gAwIBAgIQKek9sOFddr9PPar/s0CmczANBgkqhkiG9w0B
 # AQsFADAjMSEwHwYDVQQDDBhFbnRlcnByaXNlT3BzVG9vbGtpdCBEZXYwHhcNMjUw
 # OTE4MTkyNjAxWhcNMjYwOTE4MTk0NjAxWjAjMSEwHwYDVQQDDBhFbnRlcnByaXNl
 # T3BzVG9vbGtpdCBEZXYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC3
@@ -186,28 +188,30 @@ function Invoke-EotIntuneBaseline {
 # NXOCIUjsarfNZzGCBQIwggT+AgEBMDcwIzEhMB8GA1UEAwwYRW50ZXJwcmlzZU9w
 # c1Rvb2xraXQgRGV2AhAp6T2w4V12v089qv+zQKZzMAkGBSsOAwIaBQCgeDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS5
-# f23H5U+ERRaO8d89+Zst54HhDDANBgkqhkiG9w0BAQEFAASCAQCGltKPF5sT6B2F
-# Ya5UEnwG0HOzyefLWKiE8akodqC2V4URIY6hTYaxPtEkM/05cyNjpS5DFw/rSuwB
-# dqLmIrHZRNtdIO1XgzzA4TEvi9Oz8wWsAwuGVb8gg6D31RrJuXc9AefUHSk/IQ9t
-# hCovXZmT/EIhlHRCJ3JdBpQ2uia5PrMChhw3qFpWjSaWLMdIuJqvCCU0DdBqIr3u
-# lScMkpO93CDZLQPsMl5dARruljmCFF2PWwKMpglqjWHHtsI0nnK3YaE8zIkcScZr
-# NKsLn/T6kA9PibeccBaEznBtCPAY/NMkZnyOlEEDKgAFplVkr75wVbxIirDdGKt4
-# N0KomVdSoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRv
+# 87at8IWs5L6CcECKUMmWirGtPDANBgkqhkiG9w0BAQEFAASCAQCPF23C9QPpvr2n
+# g8UA4HJ9P9jZBQGdVB335MOCfDViedHbFcHTyy83BqLKf2jz8mdsEOmL9bNxy9KM
+# 2HMgD6FD4VEjb6z3nH47SC5owPInV+DmGn9GRfqxizplg8vStya1ostxDvUuBv46
+# bWj0KKcJJQyT8O2H43uxrwGkxDIbpDGYUIkpwz4ffYw4kLVyrgN6F/DSGssBiAA2
+# 8Zu7wGFcBwkHSCq2NtTxKPLkno/FzzZYvPosFVE0Va1A9HeHjQWU3Y8OCBAhTL57
+# yRRvTUGCRIJpPjrtMcu0bnpyv8TfIzwNtWwUWpU54wGqs9D4nLjtXh+qt7gDOdWE
+# eBRbBTGsoYIDJjCCAyIGCSqGSIb3DQEJBjGCAxMwggMPAgEBMH0waTELMAkGA1UE
 # BhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMUEwPwYDVQQDEzhEaWdpQ2Vy
 # dCBUcnVzdGVkIEc0IFRpbWVTdGFtcGluZyBSU0E0MDk2IFNIQTI1NiAyMDI1IENB
 # MQIQCoDvGEuN8QWC0cR2p5V0aDANBglghkgBZQMEAgEFAKBpMBgGCSqGSIb3DQEJ
-# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1M1owLwYJ
-# KoZIhvcNAQkEMSIEINROO0dubGxMTsqLcyWmD00Z8UAf5TtxBglouqvfQcfIMA0G
-# CSqGSIb3DQEBAQUABIICACz0p8GK0lCpaeZus6N8bwQY97GY6mBkPFs30Lyu829s
-# rsuPlH8h5WXHsGCLbFdi/vxgj+yHPBTpKtIQF/9z3ODAJ5mYlBGOUnE9thd8or6a
-# hn/TKYCnDzkVrl6tGoCmZLtMBc5YQxMwt+bnx9j0n+lBbrB3gSW6jnNxAP6tYGy2
-# rDN+aRodVta4knt4y5vyWrEgqo59Hapybno58Ngz3+IQBjXtzAOoqkiwkz4JdQSA
-# 5+cJqyEa+i6WZUH9zshk+iLMAug1RfvM1SvLOwtyzrU1L34RZdOzmYLzz9GK1nub
-# HsuNxfPn8g0tK62WrS2V2jyUx3Jhed+0+vlRqhvnM9H+QrCGo6WyXDhZeJymv/9t
-# lZSqGH6nosV64QbG1yOoUV6Pzn/eKUAHDCaau43Q03UjGdaS5nu3yrxFXTDpZ3Kw
-# NoborEYHnyAFXmfIzo67DSNM6WgWLiy5//gbGNJXf31VM5U0t+8z+agOMIJPtHK8
-# bzJndzFBYS51Xn3Q52mUNsziFW7qQrPQaRy4KtFUA1AVNaCgGXOqBRcuwBCGSOUw
-# InPG8CAOZTo1s1N+/RdFpFdg4gxXyrg/6Q8YU12+4QRSdr4HF5Oe7vfV95DOQU9/
-# tX/+Ye6j2nwGg1uUMWBW27zZx7XmgUw/SeBA4MR3mQPATJ6uOX/qXvps2VAnxo/l
+# AzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI1MDkxODE5MzY1MlowLwYJ
+# KoZIhvcNAQkEMSIEIH77JTgPH7c9p11DVR23CIleVanqDjsGQHwDSeiR+SnBMA0G
+# CSqGSIb3DQEBAQUABIICAKOo4HHCsyMGrIqHlSt927L7BYBJavTBB6RHOFy6dw5q
+# dtsd706ESlOV3UJEGQQavHzesy1XrAhRH30/YyVby2fR9McGi8fM5apC/7Nd/u/b
+# l4ygMAbmMNjqCnCr/3pBrT/NJgSo6mFFhpii5NP1OUNwEZ7et6VGW+vad0dHvfja
+# EV7esLTydu65cHGffWzNUwkwiBJJ+nUgXj0oK8KPXBMvoRRfMNBI0wge2tpyky9i
+# vlb0tNqtpjCpxlHOWuTMy7OfFhRzqFitngHniHqc6lIlEs/h11obibYURbbnwMoZ
+# JkNOkRXfL1VOeI5wzdb8bwza7ACOQaAoN3Kas4CUhR+5d2g9Q5+yIwI+ey9+/4oq
+# m3hwIe1dsrf0QK3neOTCGTIQwe+NLwwBO8B7ObTbb5igf8IYlAxx+e/kf9fkFPjS
+# /iPOm0QAuU1Hqv50Xj1MDUSnvSyyXirw7OLv6wRf1LEUsKcR7cxlW8wMMhk89Am2
+# zLhLJiiD1Fa7O37WLZ9C+9LrHrMKAcZ2/Jxq5PgmYyd/WYjTAVi2b9UuNkwjjZrN
+# t7LDO4pxW0QxnyG261654hVtSd9+JkvTQHImzGjrcdelKVRGkwxuUuTe9NXI5pd2
+# XLBVPzXlxTa2H91ED+nbWoW30BQMIuZUwnFvjqzeO/wq6jO6fQd3Lwr57Byjlrnd
 # SIG # End signature block
+
+

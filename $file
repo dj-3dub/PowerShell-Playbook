@@ -1,0 +1,7 @@
+From: $From
+To: $($t.UPN)
+Subject: $subject
+Date: $((Get-Date).ToString('R'))
+Content-Type: text/plain; charset=utf-8
+
+$body
