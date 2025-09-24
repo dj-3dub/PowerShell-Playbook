@@ -12,3 +12,20 @@ out/
 
 # PowerShell build artifacts
 *.nupkg
+
+# Build & report outputs
+reports/
+out/
+test-results.xml
+testResults.xml
+*.nunit.xml
+
+# Local/editor
+.vscode/
+*.code-workspace
+
+# PowerShell
+*.psd1.tmp
+*/bin/
+*/obj/
+
