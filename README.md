@@ -32,10 +32,27 @@ Designed to accelerate **IT operations, reporting, and troubleshooting** with re
 
 ---
 
+### 🧪 Mock VMware Windows Server Deploy (no vCenter required)
+
+Design and present a full VMware build plan (clone → sizing → 4 NIC attach → 2× NIC Teams → IP config) without touching a real environment.
+
+```powershell
+pwsh -NoProfile -File .\scripts\dev\Invoke-WinServerVmBuild-Mock.ps1 `
+  -VMName "WIN-SQL01" -Template "Win2022-Core-Golden" `
+  -Datacenter "DC1" -Cluster "Prod-Cluster01" -Datastore "iSCSI-DS1" `
+  -CPU 8 -MemoryGB 32 -DiskGB 200 `
+  -PortGroup1 "Prod-LAN-A" -PortGroup2 "Prod-LAN-B" -PortGroup3 "Prod-LAN-A" -PortGroup4 "Prod-LAN-B" `
+  -Hostname "WIN-SQL01" -IPv4 "10.20.30.40" -PrefixLength 24 -Gateway "10.20.30.1" `
+  -DnsServers "10.20.30.10","1.1.1.1" `
+  -OutputPath .\out
+```
+
+---
+
 ## 📂 Repo Structure
 
 ```
-PowerShell-Automation-Toolkit/
+PowerShell-Playbook/
 ├── src/                          # Core module code
 │   ├── PowerShellPlaybook.psd1   # Module manifest
 │   ├── PowerShellPlaybook.psm1   # Module entrypoint
@@ -53,8 +70,8 @@ PowerShell-Automation-Toolkit/
 
 ```powershell
 # Clone the repo
-git clone https://github.com/dj-3dub/PowerShell-Automation-Toolkit.git
-cd PowerShell-Automation-Toolkit
+git clone https://github.com/dj-3dub/PowerShell-Playbook.git
+cd PowerShell-Playbook
 
 # Import the module
 Import-Module ./src/PowerShellPlaybook.psd1 -Force
@@ -74,7 +91,7 @@ We ship with **Pester 5** + **PSScriptAnalyzer** support:
 .\Run-Tests.ps1 -Output Detailed
 
 # Optional: generate NUnit XML
-.\Run-Tests.ps1 -Output Detailed -NUnitXml .	est-results.xml
+.\Run-Tests.ps1 -Output Detailed -NUnitXml .\test-results.xml
 ```
 
 CI/CD workflow coming soon (GitHub Actions).
