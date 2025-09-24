@@ -32,7 +32,7 @@ Designed to accelerate **IT operations, reporting, and troubleshooting** with re
 
 ---
 
-### 🧪 Mock VMware Windows Server Deploy (no vCenter required)
+### 🧪 VMware Windows Server Deploy (no vCenter required)
 
 Design and present a full VMware build plan (clone → sizing → 4 NIC attach → 2× NIC Teams → IP config) without touching a real environment.
 
