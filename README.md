@@ -114,6 +114,43 @@ CI/CD workflow coming soon (GitHub Actions).
 - Windows Server for role/feature inventory
 - Admin rights for some functions (Defender, SupportBundle)
 
+### Optional provider modules
+
+The Extensions module integrates with several cloud and vendor provider modules which are optional but enable additional features:
+
+- Az (Azure) — install `Az.Accounts` and related Az modules to enable `Get-CloudBaseline` and Azure queries.
+- Microsoft Graph — install `Microsoft.Graph.Authentication` (or the Microsoft.Graph metapackage) to enable Graph-based checks.
+- Exchange Online — install `ExchangeOnlineManagement` for Exchange tenant health reports.
+- AWS — install `AWSPowerShell.NetCore` to enable AWS-specific baselines.
+- VMware — install `VCF.PowerCLI` (recommended) to enable hypervisor reporting. If you previously had older `VMware.*` modules installed, remove them first to avoid publisher/signature conflicts.
+
+Example (CurrentUser scope):
+
+```powershell
+Install-Module -Name Az.Accounts,Microsoft.Graph.Authentication,ExchangeOnlineManagement,AWSPowerShell.NetCore,VCF.PowerCLI -Scope CurrentUser -Force -AllowClobber
+```
+
+If you can't or don't want to install all providers, the module will still import and most functions will return warnings or no-ops when a provider is missing.
+
+### Antivirus / Windows Defender
+
+Some vendor SDK files (for example VMware SDK scripts) may be flagged by antivirus products during module installation or import. If you see "This script contains malicious content and has been blocked by your antivirus software" for paths under your user modules folder, whitelist the PowerShell modules location (example path):
+
+`C:\Users\<you>\Documents\PowerShell\Modules`
+
+Whitelisting that folder or temporarily disabling AV during module install will avoid blocked files. Prefer to re-enable AV and only whitelist trusted module folders.
+
+### Removing old VMware modules
+
+If you encounter publisher or signature conflicts when installing `VCF.PowerCLI`, remove older `VMware.*` modules first. A helper script is included:
+
+```powershell
+# Run from the repo root (this attempts to uninstall user-scoped VMware modules)
+pwsh -NoProfile -File .\scripts\cleanup-vmware-modules.ps1
+```
+
+If the script reports leftovers in `C:\Program Files\PowerShell\Modules` you will need to remove those folders with admin rights (or run the removal in an elevated session).
+
 ---
 
 ## 📌 Topics
