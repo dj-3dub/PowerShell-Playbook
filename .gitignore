@@ -29,3 +29,6 @@ testResults.xml
 */bin/
 */obj/
 
+/out/
+.DS_Store
+Thumbs.db
