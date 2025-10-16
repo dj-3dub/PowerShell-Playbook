@@ -8,6 +8,7 @@ All notable changes to **PowerShell Playbook** will be documented here.
 
 - GitHub Actions CI/CD workflow for automated lint + test
 - New automation modules (deployment, compliance, reporting)
+ - `scripts/Export-ADObjects-NoRSAT.ps1`: added `-Mock` mode to simulate AD objects for offline testing and CI (use `-MockCount` to control rows).
 
 ---
 
