@@ -1,0 +1,19 @@
+{
+  "Jobs": [
+    {
+      "ObjectType": "User",
+      "Filter": "Enabled -eq $true",
+      "OutputPath": "./exports/users_enabled.csv"
+    },
+    {
+      "ObjectType": "Computer",
+      "Filter": "*",
+      "OutputPath": "./exports/computers_all.csv"
+    },
+    {
+      "ObjectType": "Group",
+      "Filter": "*",
+      "OutputPath": "./exports/groups_all.csv"
+    }
+  ]
+}
