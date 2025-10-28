@@ -68,6 +68,12 @@ Get-ChildItem .\scripts -Recurse -Filter *.ps1 | Unblock-File
 
 ---
 
+<p align="center">
+  <sub>💙 Made with love by <strong>Tim Heverin</strong></sub>
+</p>
+
+---
+
 ## 📜 License
 
 MIT License © Tim Heverin
