@@ -1,189 +1,73 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/PowerShell/PowerShell/master/assets/ps_black_64.svg" width="90" alt="PowerShell Logo"/>
 </p>
+# ⚙️ PowerShell-Playbook
 
-A modern, modular **PowerShell automation toolkit** for Windows and hybrid environments.
-Designed to accelerate **IT operations, reporting, and troubleshooting** with reproducible scripts and HTML/CSV outputs.
-A modern, modular **PowerShell automation toolkit** for Windows and hybrid environments.
-Designed to accelerate **IT operations, reporting, and troubleshooting** with reproducible scripts and HTML/CSV outputs.
-
----
-
-## ✨ Features
-
-- **Inventory & Reporting**
-  - `Get-ServerRoleFeatureInventory` → Collects Windows Server role/feature inventory with CSV + HTML output
-  - `Get-LocalAdminReport` → Audits local administrators on servers/workstations
-  - `Get-CertificateExpiry` → Scans certificates nearing expiration
-  - `Get-ConditionalAccessReport` → Pulls Conditional Access insights
-
-- **Troubleshooting**
-  - `Collect-SupportBundle` → Gathers logs, services, hotfixes, event logs, and network info into a zip + HTML summary
-  - `Get-DefenderStatus` → Quick check of Windows Defender status
-
-- **Automation Helpers**
-  - `Invoke-WithRetry` → Retry logic wrapper
-  - `Invoke-WinGetBaseline` / `Invoke-IntuneBaseline` → Baseline configuration via WinGet / Intune
-  - `Write-ToolkitLog` → Consistent structured logging
-
-- **Identity & Governance**
-  - `Send-PasswordExpiryNotification` → Generate user password expiry reports & notifications
-  - `Test-AdOnline`, `Test-Rbac` → Health checks and access testing
+A modular collection of PowerShell scripts and functions designed for automating Windows system configuration, diagnostics, and IT operations workflows.  
+This playbook supports enterprise-grade automation as well as homelab experimentation, offering reusable tooling for endpoint management, baselining, and support tasks.
 
 ---
 
-## 🆕 What's new
-
-- Export-ADObjects-NoRSAT: added a lightweight mock mode to `scripts/Export-ADObjects-NoRSAT.ps1` for offline testing and CI usage.
-
-  - Flag: `-Mock` (simulate AD objects without RSAT or network connectivity)
-  - Use `-MockCount` to control how many objects are generated (default: 25)
-  - Output is written to the path supplied to `-OutputPath` (creates directory if needed)
-
-  Example (generate 50 mock users to exports/users_mock.csv):
-
-```powershell
-.\scripts\Export-ADObjects-NoRSAT.ps1 -ObjectType User -Mock -MockCount 50 -OutputPath .\exports\users_mock.csv -Verbose
-```
-
-  This mode is useful for demonstrations, CI pipelines, or when RSAT/System.DirectoryServices is not available.
-
----
-
-### 🧪 VMware Windows Server Deploy (no vCenter required)
-
-Design and present a full VMware build plan (clone → sizing → 4 NIC attach → 2× NIC Teams → IP config) without touching a real environment.
-
-```powershell
-pwsh -NoProfile -File .\scripts\dev\Invoke-WinServerVmBuild-Mock.ps1 `
-  -VMName "WIN-SQL01" -Template "Win2022-Core-Golden" `
-  -Datacenter "DC1" -Cluster "Prod-Cluster01" -Datastore "iSCSI-DS1" `
-  -CPU 8 -MemoryGB 32 -DiskGB 200 `
-  -PortGroup1 "Prod-LAN-A" -PortGroup2 "Prod-LAN-B" -PortGroup3 "Prod-LAN-A" -PortGroup4 "Prod-LAN-B" `
-  -Hostname "WIN-SQL01" -IPv4 "10.20.30.40" -PrefixLength 24 -Gateway "10.20.30.1" `
-  -DnsServers "10.20.30.10","1.1.1.1" `
-  -OutputPath .\out
-```
-
----
-
-## 📂 Repo Structure
+## 📁 Repository Layout
 
 ```
 PowerShell-Playbook/
-├── src/                          # Core module code
-│   ├── PowerShellPlaybook.psd1   # Module manifest
-│   ├── PowerShellPlaybook.psm1   # Module entrypoint
-│   ├── Public/                   # Exported functions
-│   └── Private/                  # Internal helpers
-├── tests/                        # Pester tests (Reports, Identity, WindowsOnly)
-├── reports/                      # Generated reports (gitignored)
-├── Run-Tests.ps1                 # Lint + Test runner (Pester 5, ScriptAnalyzer)
-└── Diagnose-Playbook.ps1         # Self-check diagnostics
+├── scripts/
+│   ├── automation/       # Automation and repair scripts (new)
+│   ├── dev/              # Development and testing utilities
+│   ├── ops/              # Operational support scripts
+│   ├── tools/            # Helper scripts and functions
+│   └── data/             # Static data files (CSV, JSON, XML)
+├── src/                  # Public and private module functions
+├── out/                  # Generated artifacts (exports, reports, support bundles)
+├── docs/                 # Documentation and images
+└── tests/                # Pester and smoke tests
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🧰 New Automation Scripts (2025-10-28)
+
+| Script | Purpose |
+|--------|----------|
+| **Diagnose-SlowPC.ps1** | Performs system health diagnostics (CPU, RAM, disk I/O, event logs). |
+| **Repair-WindowsUpdate.ps1** | Resets Windows Update components and clears cache issues. |
+| **Invoke-ChocoAppSync.ps1** | Syncs Chocolatey package installs and updates missing software. |
+| **Export-LocalAdmins.ps1** | Enumerates local administrator accounts and exports to CSV. |
+| **Collect-SupportBundle.ps1** | Gathers system logs and support data into a single ZIP bundle. |
+| **Reset-Proxy.ps1** | Views, sets, or clears WinHTTP and WinINET proxy configurations. |
+| **Repair-WindowsSearch.ps1** | Repairs the Windows Search index and restarts related services. |
+| **Fix-DnsStack.ps1** | Flushes and resets DNS client stack settings. |
+
+---
+
+## 🚀 Quick Start
+
+Clone and open the playbook:
 
 ```powershell
-# Clone the repo
 git clone https://github.com/dj-3dub/PowerShell-Playbook.git
 cd PowerShell-Playbook
-
-# Import the module
-Import-Module ./src/PowerShellPlaybook.psd1 -Force
-
-# List available commands
-Get-Command -Module PowerShellPlaybook
 ```
 
----
-
-## 🧪 Testing & Linting
-
-We ship with **Pester 5** + **PSScriptAnalyzer** support:
+Unblock all scripts and run a diagnostic sample:
 
 ```powershell
-# Run lint + tests
-.\Run-Tests.ps1 -Output Detailed
-
-# Optional: generate NUnit XML
-.\Run-Tests.ps1 -Output Detailed -NUnitXml .\test-results.xml
+Get-ChildItem .\scripts -Recurse -Filter *.ps1 | Unblock-File
+.\scripts\automation\Diagnose-SlowPC.ps1 -WhatIf
 ```
-
-CI/CD workflow coming soon (GitHub Actions).
 
 ---
 
-## 📊 Sample Report
+## 🧩 Use Cases
 
-`Get-ServerRoleFeatureInventory -OutputPath ./reports`
-
-<p align="center">
-  <img src="docs/images/sample-report.png" width="700" alt="Server Role Inventory Report"/>
-</p>
-
----
-
-## 🧩 Requirements
-
-- Windows PowerShell 5.1 **or** PowerShell 7+
-- Windows Server for role/feature inventory
-- Admin rights for some functions (Defender, SupportBundle)
-
-### Optional provider modules
-
-The Extensions module integrates with several cloud and vendor provider modules which are optional but enable additional features:
-
-- Az (Azure) — install `Az.Accounts` and related Az modules to enable `Get-CloudBaseline` and Azure queries.
-- Microsoft Graph — install `Microsoft.Graph.Authentication` (or the Microsoft.Graph metapackage) to enable Graph-based checks.
-- Exchange Online — install `ExchangeOnlineManagement` for Exchange tenant health reports.
-- AWS — install `AWSPowerShell.NetCore` to enable AWS-specific baselines.
-- VMware — install `VCF.PowerCLI` (recommended) to enable hypervisor reporting. If you previously had older `VMware.*` modules installed, remove them first to avoid publisher/signature conflicts.
-
-Example (CurrentUser scope):
-
-```powershell
-Install-Module -Name Az.Accounts,Microsoft.Graph.Authentication,ExchangeOnlineManagement,AWSPowerShell.NetCore,VCF.PowerCLI -Scope CurrentUser -Force -AllowClobber
-```
-
-If you can't or don't want to install all providers, the module will still import and most functions will return warnings or no-ops when a provider is missing.
-
-### Antivirus / Windows Defender
-
-Some vendor SDK files (for example VMware SDK scripts) may be flagged by antivirus products during module installation or import. If you see "This script contains malicious content and has been blocked by your antivirus software" for paths under your user modules folder, whitelist the PowerShell modules location (example path):
-
-`C:\Users\<you>\Documents\PowerShell\Modules`
-
-Whitelisting that folder or temporarily disabling AV during module install will avoid blocked files. Prefer to re-enable AV and only whitelist trusted module folders.
-
-### Removing old VMware modules
-
-If you encounter publisher or signature conflicts when installing `VCF.PowerCLI`, remove older `VMware.*` modules first. A helper script is included:
-
-```powershell
-# Run from the repo root (this attempts to uninstall user-scoped VMware modules)
-pwsh -NoProfile -File .\scripts\cleanup-vmware-modules.ps1
-```
-
-If the script reports leftovers in `C:\Program Files\PowerShell\Modules` you will need to remove those folders with admin rights (or run the removal in an elevated session).
-
----
-
-## 📌 Topics
-`powershell` · `automation` · `windows` · `enterprise` · `sysadmin` · `scripting` · `toolkit`
+- Automate common Windows maintenance and recovery tasks  
+- Capture system health data for troubleshooting or reporting  
+- Standardize workstation or server configuration baselines  
+- Build repeatable, script-driven workflows for lab or enterprise use  
 
 ---
 
 ## 📜 License
 
-MIT — free to use, modify, and share.
-Contributions and improvements welcome!
-
----
-
-## 🙌 Credits
-
-Built with ❤️ by [Tim Hevein](https://github.com/dj-3dub).
-Thanks to the PowerShell community for modules, best practices, and inspiration.
+MIT License © Tim Heverin
