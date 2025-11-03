@@ -1,7 +1,8 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/PowerShell/PowerShell/master/assets/ps_black_64.svg" width="90" alt="PowerShell Logo"/>
 </p>
-⚙️ PowerShell-Playbook
+
+# ⚙️ PowerShell-Playbook
 
 A modular collection of PowerShell scripts and functions designed for automating Windows system configuration, diagnostics, and IT operations workflows.  
 This playbook supports enterprise-grade automation as well as homelab experimentation, offering reusable tooling for endpoint management, baselining, and support tasks.
@@ -13,7 +14,7 @@ This playbook supports enterprise-grade automation as well as homelab experiment
 ```
 PowerShell-Playbook/
 ├── scripts/
-│   ├── automation/       # Automation and repair scripts (new)
+│   ├── automation/       # Automation and repair scripts
 │   ├── dev/              # Development and testing utilities
 │   ├── ops/              # Operational support scripts
 │   ├── tools/            # Helper scripts and functions
@@ -26,7 +27,7 @@ PowerShell-Playbook/
 
 ---
 
-## 🧰 New Automation Scripts (2025-10-28)
+## 🧰 Featured Automation Scripts
 
 | Script | Purpose |
 |--------|----------|
