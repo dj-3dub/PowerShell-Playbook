@@ -1,8 +1,7 @@
 # 🌟 Helpdesk Automation Pack (Feature Branch)
 ### *A portfolio-focused edition of the PowerShell Playbook featuring an extended Helpdesk Automation Toolkit.*
 
-This feature branch contains:
-- A refined, presentation-ready README  
+This feature branch contains: 
 - The full Helpdesk Automation Toolkit (diagnostics + repair modules)  
 - Endpoint health checks, VPN testing, Outlook/Teams/browser resets, OneDrive repair, BitLocker checks, and more  
 - Enhanced documentation designed to showcase automation strategy, engineering depth, and standardized troubleshooting practices  
