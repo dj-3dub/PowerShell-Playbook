@@ -1,0 +1,3 @@
+FirstName,LastName,SamAccountName,UserPrincipalName,OU,Department,Title,InitialPassword,Groups
+Alex,Johnson,ajohnson,ajohnson@corp.local,"OU=Users,OU=HQ,DC=corp,DC=local",IT,"Support Analyst","P@ssw0rd!23","GG-IT-Helpdesk;GG-VPN-Users"
+Jamie,Smith,jsmith,jsmith@corp.local,"OU=Users,OU=HQ,DC=corp,DC=local",Finance,"Analyst","P@ssw0rd!23","GG-Finance-Users"
