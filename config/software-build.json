@@ -1,0 +1,8 @@
+{
+  "PackageProvider": "winget",
+  "Applications": [
+    { "Name": "Google Chrome", "Id": "Google.Chrome" },
+    { "Name": "7-Zip", "Id": "7zip.7zip" },
+    { "Name": "Notepad++", "Id": "Notepad++.Notepad++" }
+  ]
+}

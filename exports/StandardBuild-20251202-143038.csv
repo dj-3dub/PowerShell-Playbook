@@ -1,0 +1,4 @@
+﻿"Application","Id","Provider","Succeeded"
+"Google Chrome","Google.Chrome","winget","False"
+"7-Zip","7zip.7zip","winget","False"
+"Notepad++","Notepad++.Notepad++","winget","True"
