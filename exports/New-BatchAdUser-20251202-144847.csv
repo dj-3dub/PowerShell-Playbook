@@ -1,0 +1,3 @@
+﻿"SamAccountName","Name","OU","Department","Title","Groups","Enabled","Offline","Created","Error"
+"ajohnson","Alex Johnson","OU=Users,OU=HQ,DC=corp,DC=local","IT","Support Analyst","GG-IT-Helpdesk;GG-VPN-Users","True","True","False",
+"jsmith","Jamie Smith","OU=Users,OU=HQ,DC=corp,DC=local","Finance","Analyst","GG-Finance-Users","True","True","False",
