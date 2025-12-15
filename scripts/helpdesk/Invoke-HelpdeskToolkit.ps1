@@ -18,6 +18,10 @@
      12.  Outlook OST repair (scan/rebuild)
      13.  Endpoint pre-flight checks (OS/disk/memory/network/events)
      14.  Network performance diagnostics (slow/intermittent)
+     15.  View Network Performance Logs
+     16.  Identity: Sign-in health triage
+     17.  Identity: Unlock AD account
+     18.  Identity: Force AD password reset
       Q.  Quit
 
 .EXAMPLE
@@ -247,7 +251,6 @@ function Invoke-PreflightChecks {
     & $script @params
 }
 
-# NEW NETWORK PERFORMANCE DIAGNOSTICS
 function Invoke-NetworkPerformance {
     $script = Join-Path $scriptDir 'Test-NetworkPerformance.ps1'
     if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
@@ -258,6 +261,85 @@ function Invoke-NetworkPerformance {
     $params = @{ Verbose = $true }
     if ($ticket) { $params.TicketId = $ticket }
     if ($remed -match '^[Yy]') { $params.EnableSafeRemediation = $true }
+
+    & $script @params
+}
+
+function Invoke-ViewNetworkPerformanceLogs {
+    $logsDir = Join-Path $scriptDir '..\..\out\HelpdeskLogs'
+    try { $logsDir = (Resolve-Path $logsDir).Path } catch { $logsDir = $null }
+
+    if (-not $logsDir -or -not (Test-Path $logsDir)) {
+        Write-Host "Log directory not found: out/HelpdeskLogs" -ForegroundColor Yellow
+        return
+    }
+
+    $logs = Get-ChildItem -Path $logsDir -Filter 'NetPerf_*.txt' -File -ErrorAction SilentlyContinue |
+        Sort-Object -Property LastWriteTime -Descending
+
+    if (-not $logs) {
+        Write-Host "No NetPerf logs found." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ""
+    Write-Host "=== Network Performance Logs ===" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $logs.Count; $i++) {
+        Write-Host ("[{0}] {1} ({2})" -f $i, $logs[$i].Name, $logs[$i].LastWriteTime)
+    }
+
+    $idx = Read-Host "Select log number to view (Enter to cancel)"
+    if ([string]::IsNullOrWhiteSpace($idx)) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+    if ($idx -notmatch '^\d+$') { Write-Host "Invalid selection." -ForegroundColor Yellow; return }
+    $n = [int]$idx
+    if ($n -lt 0 -or $n -ge $logs.Count) { Write-Host "Invalid selection." -ForegroundColor Yellow; return }
+
+    Write-Host ""
+    Write-Host ("=== Viewing {0} ===" -f $logs[$n].FullName) -ForegroundColor Green
+    Write-Host ""
+    Get-Content -Path $logs[$n].FullName | Out-Host
+    Write-Host ""
+    Write-Host "=== End ===" -ForegroundColor Green
+}
+
+function Invoke-IdentitySignInHealth {
+    $script = Join-Path $scriptDir 'Test-UserSignInHealth.ps1'
+    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+
+    $user = Read-Host "Enter username or UPN (default current user)"
+    if (-not $user) { $user = $env:USERNAME }
+    $ticket = Read-Host "Ticket ID (optional)"
+
+    $params = @{ Identity = $user; Verbose = $true }
+    if ($ticket) { $params.TicketId = $ticket }
+
+    & $script @params
+}
+
+function Invoke-UnlockAdAccount {
+    $script = Join-Path $scriptDir 'Unlock-UserAccount.ps1'
+    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+
+    $user = Read-Host "Enter AD username/UPN to unlock"
+    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+    $ticket = Read-Host "Ticket ID (optional)"
+
+    $params = @{ Identity = $user; Verbose = $true }
+    if ($ticket) { $params.TicketId = $ticket }
+
+    & $script @params
+}
+
+function Invoke-ForceAdPasswordReset {
+    $script = Join-Path $scriptDir 'Force-PasswordReset.ps1'
+    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+
+    $user = Read-Host "Enter AD username/UPN to reset password"
+    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+    $ticket = Read-Host "Ticket ID (optional)"
+
+    $params = @{ Identity = $user; Verbose = $true }
+    if ($ticket) { $params.TicketId = $ticket }
 
     & $script @params
 }
@@ -282,6 +364,10 @@ function Show-Menu {
     Write-Host "12)  Outlook OST repair"
     Write-Host "13)  Endpoint pre-flight checks"
     Write-Host "14)  Network performance diagnostics"
+    Write-Host "15)  View Network Performance Logs"
+    Write-Host "16)  Identity: Sign-in health triage"
+    Write-Host "17)  Identity: Unlock AD account"
+    Write-Host "18)  Identity: Force AD password reset"
     Write-Host " Q)  Quit"
     Write-Host ""
 }
@@ -291,26 +377,29 @@ do {
     $choice = Read-Host "Select an option"
 
     switch ($choice.ToUpper()) {
-        '1'  { Invoke-ResetPrinter         ; Pause }
-        '2'  { Invoke-ResetTeams           ; Pause }
-        '3'  { Invoke-ResetOutlook         ; Pause }
-        '4'  { Invoke-RepairNetwork        ; Pause }
-        '5'  { Invoke-RepairWindowsUpdate  ; Pause }
-        '6'  { Invoke-CollectHelpdeskLogs  ; Pause }
-        '7'  { Invoke-ResetBrowser         ; Pause }
-        '8'  { Invoke-MailboxCapacityCheck ; Pause }
-        '9'  { Invoke-OneDriveRepair       ; Pause }
-        '10' { Invoke-VpnDiagnostics       ; Pause }
-        '11' { Invoke-BitLockerHealth      ; Pause }
-        '12' { Invoke-OutlookOstRepair     ; Pause }
-        '13' { Invoke-PreflightChecks      ; Pause }
-        '14' { Invoke-NetworkPerformance   ; Pause }
+        '1'  { Invoke-ResetPrinter                ; Pause }
+        '2'  { Invoke-ResetTeams                  ; Pause }
+        '3'  { Invoke-ResetOutlook                ; Pause }
+        '4'  { Invoke-RepairNetwork               ; Pause }
+        '5'  { Invoke-RepairWindowsUpdate         ; Pause }
+        '6'  { Invoke-CollectHelpdeskLogs         ; Pause }
+        '7'  { Invoke-ResetBrowser                ; Pause }
+        '8'  { Invoke-MailboxCapacityCheck        ; Pause }
+        '9'  { Invoke-OneDriveRepair              ; Pause }
+        '10' { Invoke-VpnDiagnostics              ; Pause }
+        '11' { Invoke-BitLockerHealth             ; Pause }
+        '12' { Invoke-OutlookOstRepair            ; Pause }
+        '13' { Invoke-PreflightChecks             ; Pause }
+        '14' { Invoke-NetworkPerformance          ; Pause }
+        '15' { Invoke-ViewNetworkPerformanceLogs  ; Pause }
+        '16' { Invoke-IdentitySignInHealth        ; Pause }
+        '17' { Invoke-UnlockAdAccount             ; Pause }
+        '18' { Invoke-ForceAdPasswordReset        ; Pause }
         'Q'  { Write-Host "Exiting Helpdesk Toolkit." -ForegroundColor Green }
         default {
-            Write-Host "Invalid selection. Choose 1-14 or Q." -ForegroundColor Yellow
+            Write-Host "Invalid selection. Choose 1-18 or Q." -ForegroundColor Yellow
             Pause
         }
     }
 
 } while ($choice.ToUpper() -ne 'Q')
-
