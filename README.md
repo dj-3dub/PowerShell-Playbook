@@ -1,80 +1,113 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/PowerShell/PowerShell/master/assets/ps_black_64.svg" width="90" alt="PowerShell Logo"/>
-</p>
+# 🌟 Helpdesk Automation Pack (Feature Branch)
+### *A portfolio-focused edition of the PowerShell Playbook featuring an extended Helpdesk Automation Toolkit.*
 
-# ⚙️ PowerShell-Playbook
+This feature branch contains: 
+- The full Helpdesk Automation Toolkit (diagnostics + repair modules)  
+- Endpoint health checks, VPN testing, Outlook/Teams/browser resets, OneDrive repair, BitLocker checks, and more  
+- Enhanced documentation designed to showcase automation strategy, engineering depth, and standardized troubleshooting practices  
 
-A modular collection of PowerShell scripts and functions designed for automating Windows system configuration, diagnostics, and IT operations workflows.  
-This playbook supports enterprise-grade automation as well as homelab experimentation, offering reusable tooling for endpoint management, baselining, and support tasks.
+This branch serves as an expanded demonstration of automation capability and endpoint engineering methodology.  
+The `main` branch retains the core PowerShell module structure and production scripting.
 
 ---
 
-## 📁 Repository Layout
+# 🔹 Overview  
+Modern IT operations face a recurring challenge: **high ticket volume caused by repetitive, time‑consuming, and easily automatable endpoint issues.**
 
+This toolkit centralizes proven support procedures into consistent, modular PowerShell workflows that:
+
+- Accelerate problem resolution  
+- Improve reliability and consistency  
+- Reduce manual troubleshooting effort  
+- Provide actionable diagnostics and structured logs  
+- Enable efficient support across teams  
+
+---
+
+# 🔹 Toolkit Capabilities  
+
+## 🛠 Automated Repairs
+- Printer subsystem repair  
+- Microsoft Teams cache rebuild  
+- Outlook profile reset  
+- Network stack repair (DNS/Winsock/TCP)  
+- Windows Update component repair  
+- Browser (Chrome/Edge) profile resets  
+- OneDrive sync repair (soft or full reset)  
+- Outlook OST backup, scan, and rebuild  
+
+---
+
+## 🩺 Diagnostics & System Health
+- Endpoint pre-flight checks  
+- VPN diagnostics (connectivity, routing, DNS)  
+- BitLocker status and TPM reporting  
+- Mailbox quota & retention policy analysis  
+- Comprehensive helpdesk log collection (ZIP bundle)  
+
+These modules mirror real-world troubleshooting steps used by senior support engineers.
+
+---
+
+# 🧱 Project Structure
 ```
-PowerShell-Playbook/
-├── scripts/
-│   ├── automation/       # Automation and repair scripts
-│   ├── dev/              # Development and testing utilities
-│   ├── ops/              # Operational support scripts
-│   ├── tools/            # Helper scripts and functions
-│   └── data/             # Static data files (CSV, JSON, XML)
-├── src/                  # Public and private module functions
-├── out/                  # Generated artifacts (exports, reports, support bundles)
-├── docs/                 # Documentation and images
-└── tests/                # Pester and smoke tests
+scripts/
+│
+├── helpdesk/
+│   ├── Invoke-HelpdeskToolkit.ps1
+│   ├── <diagnostic modules>
+│   ├── <repair modules>
+│   ├── <logging modules>
+│   └── <reporting modules>
+│
+└── out/
 ```
 
 ---
 
-## 🧰 Featured Automation Scripts
+# 🚀 Usage
 
-| Script | Purpose |
-|--------|----------|
-| **Diagnose-SlowPC.ps1** | Performs system health diagnostics (CPU, RAM, disk I/O, event logs). |
-| **Repair-WindowsUpdate.ps1** | Resets Windows Update components and clears cache issues. |
-| **Invoke-ChocoAppSync.ps1** | Syncs Chocolatey package installs and updates missing software. |
-| **Export-LocalAdmins.ps1** | Enumerates local administrator accounts and exports to CSV. |
-| **Collect-SupportBundle.ps1** | Gathers system logs and support data into a single ZIP bundle. |
-| **Reset-Proxy.ps1** | Views, sets, or clears WinHTTP and WinINET proxy configurations. |
-| **Repair-WindowsSearch.ps1** | Repairs the Windows Search index and restarts related services. |
-| **Fix-DnsStack.ps1** | Flushes and resets DNS client stack settings. |
-
----
-
-## 🚀 Quick Start
-
-Clone and open the playbook:
-
+## Windows PowerShell
 ```powershell
-git clone https://github.com/dj-3dub/PowerShell-Playbook.git
-cd PowerShell-Playbook
+cd .\scripts\helpdesk\
+.\Invoke-HelpdeskToolkit.ps1
 ```
 
-Unblock all scripts and run a diagnostic sample:
+## WSL → Windows PowerShell
+```bash
+cd ~/projects/PowerShell-Playbook
+WINPATH=$(wslpath -w .)
 
-```powershell
-Get-ChildItem .\scripts -Recurse -Filter *.ps1 | Unblock-File
-.\scripts\automation\Diagnose-SlowPC.ps1 -WhatIf
+powershell.exe -ExecutionPolicy Bypass -Command "
+  Set-Location '$WINPATH';
+  ./scripts/helpdesk/Invoke-HelpdeskToolkit.ps1
+"
 ```
 
 ---
 
-## 🧩 Use Cases
+# 🔮 Forward Vision
+Future enhancements may include:
 
-- Automate common Windows maintenance and recovery tasks  
-- Capture system health data for troubleshooting or reporting  
-- Standardize workstation or server configuration baselines  
-- Build repeatable, script-driven workflows for lab or enterprise use  
+- WinGet-based standard software builds  
+- Endpoint performance snapshots  
+- GPO/RSoP troubleshooting  
+- Profile corruption detection  
+- Network latency and bottleneck analysis  
+- Advanced OneDrive/Outlook resilience modules  
 
 ---
 
+# 👤 Author
+**Tim Heverin**  
+Systems & Infrastructure Engineering  
+Windows • PowerShell • Automation • Cloud • Endpoint Operations  
+Chicago, IL  
+GitHub: **dj-3dub**
+
+---
+
+<br>
 <p align="center">
-  <sub>💙 Made with love by <strong>Tim Heverin</strong></sub>
+  <sub>Made with ❤️ by <strong>Tim Heverin</strong></sub>
 </p>
-
----
-
-## 📜 License
-
-MIT License © Tim Heverin
