@@ -32,6 +32,13 @@ Describe 'PowerShellPlaybook module' {
         Compare-Object @($declared) @($onDisk) | Should -BeNullOrEmpty -Because 'every src/Public file must be listed in the manifest and vice versa'
     }
 
+    It '<Name> has comment-based help with a synopsis and an example' -ForEach $publicFunctions {
+        $help = Get-Help $Name -Full
+        $help.Synopsis | Should -Not -Match "^\s*$Name\s*[\[(]" -Because 'a synopsis that only repeats the syntax means the help block is missing or unparseable'
+        $help.Synopsis | Should -Not -BeNullOrEmpty
+        @($help.Examples.Example).Count | Should -BeGreaterThan 0
+    }
+
     It 'does not export private helpers' {
         $exported | Should -Not -Contain 'Get-PlaybookConfig'
         $exported | Should -Not -Contain 'Invoke-WithRetry'

@@ -1,4 +1,26 @@
-﻿function Get-ServerRoleFeatureInventory {
+function Get-ServerRoleFeatureInventory {
+    <#
+    .SYNOPSIS
+    Inventories installed Windows Server roles and features on one or more servers (ServerManager, falling back to DISM).
+
+    .PARAMETER ComputerName
+    Target servers. Remote targets use Invoke-Command. Default localhost.
+
+    .PARAMETER Credential
+    Credential for remoting.
+
+    .PARAMETER OutputPath
+    Folder for the CSV and HTML report. Default ./reports.
+
+    .PARAMETER InstalledOnly
+    Only include installed roles/features.
+
+    .PARAMETER IncludeSubfeatures
+    Include sub-features as well as top-level roles/features.
+
+    .EXAMPLE
+    Get-ServerRoleFeatureInventory -ComputerName FS01, SQL01 -InstalledOnly
+    #>
     [CmdletBinding()]
     param(
         [string[]]$ComputerName = @('localhost'),

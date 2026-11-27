@@ -156,7 +156,8 @@ function New-PlaybookReport {
 
   $summaryHtml = ''
   if ($rows.Count -and $rows[0].PSObject.Properties['Status']) {
-    $summaryHtml = ($rows | Group-Object Status | Sort-Object Name | ForEach-Object {
+    $order = @{ OK = 0; Warn = 1; Fail = 2; Info = 3; NotConnected = 4 }
+    $summaryHtml = ($rows | Group-Object Status | Sort-Object { if ($order.ContainsKey($_.Name)) { $order[$_.Name] } else { 9 } } | ForEach-Object {
         $cls = switch ($_.Name) { 'OK' { 'ok' } 'Warn' { 'warn' } 'Fail' { 'fail' } default { 'info' } }
         "<span class='chip $cls'>$(& $enc $_.Name): $($_.Count)</span>"
       }) -join "`n"

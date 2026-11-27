@@ -1,4 +1,24 @@
 function Get-ConditionalAccessReport {
+    <#
+    .SYNOPSIS
+    Exports Entra ID Conditional Access policies (name, state, scope, grant/session controls) to an HTML report.
+
+    .DESCRIPTION
+    Requires Microsoft.Graph.Identity.SignIns and Connect-MgGraph -Scopes Policy.Read.All.
+    When src/config/<Environment>.json sets UseMockData, sample policies are used and the title is tagged [MOCK].
+
+    .PARAMETER Environment
+    Config to load: Dev (mock by default), Test or Prod.
+
+    .PARAMETER OutputPath
+    Folder for the HTML report. Default ./reports.
+
+    .EXAMPLE
+    Connect-MgGraph -Scopes Policy.Read.All; Get-ConditionalAccessReport -Environment Prod
+
+    .OUTPUTS
+    Path to the HTML report.
+    #>
     [CmdletBinding()]
     param(
         [ValidateSet('Dev','Test','Prod')]
@@ -14,41 +34,42 @@ function Get-ConditionalAccessReport {
         Write-ToolkitLog -Level Info -Message "CA report start" -Data @{ Env=$Environment }
     }
     process {
-        $policies = $null
-        $usedMock = $false
-        try {
-            if ($cfg.UseMockData) { throw "Mock mode enabled" }
-            if (-not (Get-Module Microsoft.Graph -ListAvailable)) { throw "Microsoft.Graph module not installed" }
-
+        $usedMock = [bool]$cfg.UseMockData
+        if ($usedMock) {
+            Write-ToolkitLog -Level Info -Message 'Using mock CA data (UseMockData in config)'
+            $policies = @(
+                [PSCustomObject]@{ Name='Require MFA for Admins'; State='enabled'; AppliesTo='Directory roles: 4'; Controls='Grant:mfa'; Id='mock-1' },
+                [PSCustomObject]@{ Name='Block Legacy Auth'; State='enabled'; AppliesTo='All'; Controls='Grant:block'; Id='mock-2' },
+                [PSCustomObject]@{ Name='Require compliant device (pilot)'; State='enabledForReportingButNotEnforced'; AppliesTo='Groups: 1'; Controls='Grant:compliantDevice'; Id='mock-3' }
+            )
+        }
+        else {
+            if (-not (Get-Command Get-MgIdentityConditionalAccessPolicy -ErrorAction SilentlyContinue)) {
+                throw 'Microsoft.Graph.Identity.SignIns is not installed. Install-Module Microsoft.Graph.Identity.SignIns -Scope CurrentUser'
+            }
             if (-not (Get-MgContext)) {
-                Connect-MgGraph -Scopes "Policy.Read.All","Directory.Read.All" | Out-Null
-                Select-MgProfile -Name "beta"
-            }
-            Import-Module Microsoft.Graph.Identity.SignIns -ErrorAction Stop
-
-            $policies = Invoke-WithRetry {
-                Get-MgIdentityConditionalAccessPolicy -All
+                throw 'No Microsoft Graph session. Run Connect-MgGraph -Scopes Policy.Read.All'
             }
 
-            $policies = $policies | ForEach-Object {
+            $policies = Invoke-WithRetry { Get-MgIdentityConditionalAccessPolicy -All } | ForEach-Object {
+                $users = $_.Conditions.Users
+                $scope = @(
+                    if ($users.IncludeUsers -contains 'All') { 'All' }
+                    elseif ($users.IncludeUsers) { "Users: $(@($users.IncludeUsers).Count)" }
+                    if ($users.IncludeGroups) { "Groups: $(@($users.IncludeGroups).Count)" }
+                    if ($users.IncludeRoles) { "Directory roles: $(@($users.IncludeRoles).Count)" }
+                ) -join '; '
                 [PSCustomObject]@{
                     Name      = $_.DisplayName
                     State     = $_.State
-                    AppliesTo = ($_.Conditions.Users.IncludeUsers -join ',')
+                    AppliesTo = $scope
                     Controls  = @(
-                        if ($_.GrantControls) { 'Grant:' + ($_.GrantControls.BuiltInControls -join '+') }
-                        if ($_.SessionControls) { 'Session:' + ($_.SessionControls.Keys -join '+') }
+                        if ($_.GrantControls.BuiltInControls) { 'Grant:' + ($_.GrantControls.BuiltInControls -join '+') }
+                        if ($_.SessionControls.SignInFrequency.IsEnabled) { 'Session:signInFrequency' }
                     ) -join ' | '
                     Id        = $_.Id
                 }
             }
-        } catch {
-            $usedMock = $true
-            Write-ToolkitLog -Level Warn -Message "Falling back to mock CA data" -Data @{ Reason = $_.Exception.Message }
-            $policies = @(
-                [PSCustomObject]@{ Name='Require MFA for Admins'; State='Enabled'; AppliesTo='Admins'; Controls='Grant:MFA'; Id='mock-1' },
-                [PSCustomObject]@{ Name='Block Legacy Auth'; State='Enabled'; AppliesTo='All Users'; Controls='Grant:Block Legacy'; Id='mock-2' }
-            )
         }
 
         $title = "Conditional Access Report ($Environment){0}" -f ($(if($usedMock){" [MOCK]"}else{""}))
