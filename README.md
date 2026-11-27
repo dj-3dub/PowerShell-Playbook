@@ -11,45 +11,45 @@ Linted with PSScriptAnalyzer and tested with Pester on Windows and Linux in CI.
 
 ---
 
-# 🔹 Overview  
+## Overview
 Modern IT operations face a recurring challenge: **high ticket volume caused by repetitive, time‑consuming, and easily automatable endpoint issues.**
 
 This toolkit centralizes proven support procedures into consistent, modular PowerShell workflows that:
 
-- Accelerate problem resolution  
-- Improve reliability and consistency  
-- Reduce manual troubleshooting effort  
-- Provide actionable diagnostics and structured logs  
-- Enable efficient support across teams  
+- Accelerate problem resolution
+- Improve reliability and consistency
+- Reduce manual troubleshooting effort
+- Provide actionable diagnostics and structured logs
+- Enable efficient support across teams
 
 ---
 
-# 🔹 Toolkit Capabilities  
+## Toolkit Capabilities
 
-## 🛠 Automated Repairs
-- Printer subsystem repair  
-- Microsoft Teams cache rebuild  
-- Outlook profile reset  
-- Network stack repair (DNS/Winsock/TCP)  
-- Windows Update component repair  
-- Browser (Chrome/Edge) profile resets  
-- OneDrive sync repair (soft or full reset)  
-- Outlook OST backup, scan, and rebuild  
+### Automated Repairs
+- Printer subsystem repair
+- Microsoft Teams cache rebuild
+- Outlook profile reset
+- Network stack repair (DNS/Winsock/TCP)
+- Windows Update component repair
+- Browser (Chrome/Edge) profile resets
+- OneDrive sync repair (soft or full reset)
+- Outlook OST backup, scan, and rebuild
 
 ---
 
-## 🩺 Diagnostics & System Health
-- Endpoint pre-flight checks  
-- VPN diagnostics (connectivity, routing, DNS)  
-- BitLocker status and TPM reporting  
-- Mailbox quota & retention policy analysis  
-- Comprehensive helpdesk log collection (ZIP bundle)  
+### Diagnostics & System Health
+- Endpoint pre-flight checks
+- VPN diagnostics (connectivity, routing, DNS)
+- BitLocker status and TPM reporting
+- Mailbox quota & retention policy analysis
+- Comprehensive helpdesk log collection (ZIP bundle)
 
 These modules mirror real-world troubleshooting steps used by senior support engineers.
 
 ---
 
-# 🧱 Project Structure
+## Project Structure
 ```
 scripts/
 │
@@ -65,15 +65,15 @@ scripts/
 
 ---
 
-# 🚀 Usage
+## Usage
 
-## Windows PowerShell
+### Windows PowerShell
 ```powershell
 cd .\scripts\helpdesk\
 .\Invoke-HelpdeskToolkit.ps1
 ```
 
-## WSL → Windows PowerShell
+### WSL → Windows PowerShell
 ```bash
 cd ~/projects/PowerShell-Playbook
 WINPATH=$(wslpath -w .)
@@ -86,28 +86,20 @@ powershell.exe -ExecutionPolicy Bypass -Command "
 
 ---
 
-# 🔮 Forward Vision
+## Roadmap
 Future enhancements may include:
 
-- WinGet-based standard software builds  
-- Endpoint performance snapshots  
-- GPO/RSoP troubleshooting  
-- Profile corruption detection  
-- Network latency and bottleneck analysis  
-- Advanced OneDrive/Outlook resilience modules  
+- WinGet-based standard software builds
+- Endpoint performance snapshots
+- GPO/RSoP troubleshooting
+- Profile corruption detection
+- Network latency and bottleneck analysis
+- Advanced OneDrive/Outlook resilience modules
 
 ---
 
-# 👤 Author
-**Tim Heverin**  
-Systems & Infrastructure Engineering  
-Windows • PowerShell • Automation • Cloud • Endpoint Operations  
-Chicago, IL  
-GitHub: **dj-3dub**
+## Author
 
----
+**Tim Heverin** · Systems & Infrastructure Engineering · Chicago, IL
 
-<br>
-<p align="center">
-  <sub>Made with ❤️ by <strong>Tim Heverin</strong></sub>
-</p>
+Windows, PowerShell, automation, cloud and endpoint operations. GitHub: [dj-3dub](https://github.com/dj-3dub)
