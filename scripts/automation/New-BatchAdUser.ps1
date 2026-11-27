@@ -14,16 +14,20 @@
 .PARAMETER CsvPath
     Path to the CSV file. Columns supported:
     FirstName, LastName, SamAccountName, UserPrincipalName, OU,
-    Department, Title, InitialPassword, Groups
+    Department, Title, Groups, InitialPassword (optional, discouraged)
 
 .PARAMETER DefaultPassword
-    Fallback password if InitialPassword is not provided in the CSV.
+    Optional SecureString used for every account that has no InitialPassword.
+    If omitted, each account gets a unique random 16-character password,
+    displayed once at the end of the run for secure handoff and never
+    written to the report CSV.
 
 .PARAMETER Enabled
     Whether to enable new accounts immediately. Defaults to $true.
 
 .PARAMETER PasswordNeverExpires
     Whether the password should be set to never expire. Defaults to $false.
+    When $false (the default), users must change their password at first logon.
 
 .PARAMETER Server
     Optional domain controller to target (e.g. dc1.corp.local).
@@ -50,7 +54,7 @@ param(
     [string]$CsvPath,
 
     [Parameter(Mandatory = $false)]
-    [string]$DefaultPassword = 'P@ssw0rd!23',
+    [securestring]$DefaultPassword,
 
     [Parameter(Mandatory = $false)]
     [bool]$Enabled = $true,
@@ -70,6 +74,49 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Temporary passwords generated this run (shown once at the end, never exported).
+$script:IssuedPasswords = New-Object System.Collections.Generic.List[object]
+
+function New-TemporaryPassword {
+    <#
+        Cryptographically random password that satisfies AD complexity rules:
+        at least one upper, lower, digit and symbol. Ambiguous characters (0/O, 1/l/I) excluded.
+    #>
+    param([ValidateRange(12, 128)][int]$Length = 16)
+
+    $sets = @(
+        'ABCDEFGHJKLMNPQRSTUVWXYZ'
+        'abcdefghijkmnopqrstuvwxyz'
+        '23456789'
+        '!@#$%^&*-_=+?'
+    )
+    $all = -join $sets
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $pick = {
+            param([string]$From)
+            $buf = New-Object byte[] 4
+            $rng.GetBytes($buf)
+            $From[[BitConverter]::ToUInt32($buf, 0) % $From.Length]
+        }
+        $chars = New-Object System.Collections.Generic.List[char]
+        foreach ($set in $sets) { $chars.Add((& $pick $set)) }
+        while ($chars.Count -lt $Length) { $chars.Add((& $pick $all)) }
+
+        # Fisher-Yates shuffle so the guaranteed characters aren't always first
+        for ($i = $chars.Count - 1; $i -gt 0; $i--) {
+            $buf = New-Object byte[] 4
+            $rng.GetBytes($buf)
+            $j = [BitConverter]::ToUInt32($buf, 0) % ($i + 1)
+            $tmp = $chars[$i]; $chars[$i] = $chars[$j]; $chars[$j] = $tmp
+        }
+        return -join $chars
+    }
+    finally {
+        $rng.Dispose()
+    }
+}
 
 function Import-AdModule {
     param(
@@ -113,7 +160,7 @@ function New-UserFromRow {
     $ou          = $Row.OU
     $dept        = $Row.Department
     $title       = $Row.Title
-    $pwdRaw      = if ($Row.InitialPassword) { $Row.InitialPassword } else { $DefaultPassword }
+    $csvPassword = if ($Row.PSObject.Properties['InitialPassword']) { $Row.InitialPassword } else { $null }
     $groups      = @()
 
     if ($Row.Groups) {
@@ -149,8 +196,19 @@ function New-UserFromRow {
         return $result
     }
 
-    # Online mode – real AD calls
-    $securePassword = ConvertTo-SecureString -String $pwdRaw -AsPlainText -Force
+    # Online mode - real AD calls
+    $generatedPassword = $null
+    if ($csvPassword) {
+        Write-Warning "Using plaintext InitialPassword from CSV for '$sam'. Prefer omitting it so a random password is generated."
+        $securePassword = ConvertTo-SecureString -String $csvPassword -AsPlainText -Force
+    }
+    elseif ($DefaultPassword) {
+        $securePassword = $DefaultPassword
+    }
+    else {
+        $generatedPassword = New-TemporaryPassword
+        $securePassword    = ConvertTo-SecureString -String $generatedPassword -AsPlainText -Force
+    }
 
     $newUserParams = @{
         Name               = $name
@@ -160,6 +218,8 @@ function New-UserFromRow {
         UserPrincipalName  = $upn
         Enabled            = $Enabled
         AccountPassword    = $securePassword
+        # AD rejects ChangePasswordAtLogon together with PasswordNeverExpires.
+        ChangePasswordAtLogon = (-not $PasswordNeverExpires)
         Path               = $ou
         Department         = $dept
         Title              = $title
@@ -206,6 +266,9 @@ function New-UserFromRow {
         }
 
         $result.Created = $true
+        if ($generatedPassword) {
+            $script:IssuedPasswords.Add([pscustomobject]@{ SamAccountName = $sam; TemporaryPassword = $generatedPassword })
+        }
     }
 
     return $result
@@ -215,7 +278,7 @@ try {
     Import-AdModule -Server $Server -Credential $Credential
 
     Write-Verbose "Importing CSV from '$CsvPath'..."
-    $rows = Import-Csv -Path $CsvPath
+    $rows = @(Import-Csv -Path $CsvPath)
 
     if (-not $rows -or $rows.Count -eq 0) {
         throw "CSV '$CsvPath' contains no rows."
@@ -244,7 +307,7 @@ try {
 
     if ($results) {
         $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-        $outDir    = Join-Path -Path $PSScriptRoot -ChildPath '..\..\exports'
+        $outDir    = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'exports'
         $null      = New-Item -Path $outDir -ItemType Directory -Force -ErrorAction SilentlyContinue
         $report    = Join-Path -Path $outDir -ChildPath "New-BatchAdUser-$timestamp.csv"
 
@@ -253,6 +316,13 @@ try {
 
         if ($Offline) {
             Write-Host "Offline mode: no changes were made to Active Directory." -ForegroundColor Yellow
+        }
+
+        if ($script:IssuedPasswords.Count -gt 0) {
+            Write-Host ''
+            Write-Host 'Temporary passwords (shown once, not saved; users must change at first logon).' -ForegroundColor Yellow
+            Write-Host 'Hand these off through your secure channel, then clear the console.' -ForegroundColor Yellow
+            $script:IssuedPasswords | Format-Table -AutoSize | Out-Host
         }
     }
     else {

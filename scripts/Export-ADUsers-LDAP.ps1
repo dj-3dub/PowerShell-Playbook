@@ -125,7 +125,7 @@ function Run-ExportADUsersLDAP {
 
 		$uac = _g 'useraccountcontrol'; if ($uac) { $uac = [int]$uac }
 		[pscustomobject]@{
-			Name = (_g 'name') ?? (_g 'cn')
+			Name = if (_g 'name') { _g 'name' } else { _g 'cn' }
 			GivenName = _g 'givenname'
 			Surname = _g 'sn'
 			DisplayName = _g 'displayname'

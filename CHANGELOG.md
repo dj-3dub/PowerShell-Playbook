@@ -7,6 +7,15 @@ All notable changes to **PowerShell Playbook** will be documented here.
 ## [Unreleased]
 
 ### Fixed
+- Five helpdesk scripts failed to parse and could not run: four used `"$var: ..."` in strings (`Test-VpnDiagnostics`, `Test-EndpointPreflight`, `Reset-BrowserProfile`, `Test-BitLockerHealth`), and `Test-MailboxCapacityAndRetention` was truncated mid-statement.
+- `Test-MailboxCapacityAndRetention`: completed the missing archive check, results and CSV export; request quota/retention/archive properties from `Get-EXOMailbox`; size parsing no longer depends on Exchange types and reads exact byte counts; mailboxes with no retention policy no longer error.
+- `Reset-TeamsCache`: supports new Teams (`ms-teams.exe`, MSIX cache) alongside classic. It no longer deletes the classic Teams install folder or the Outlook Teams Meeting Add-in.
+- `Force-PasswordReset`: `-WhatIf` no longer sets ChangePasswordAtLogon. It and `Unlock-UserAccount` exit 1 on failure.
+- `New-BatchAdUser`: removed the hardcoded default password. Accounts get unique random passwords (shown once, never written to the report) and must change them at first logon.
+- `Test-BitLockerHealth`: WMI filter never matched (`'C:\'` vs `'C:'`); switched to `Get-CimInstance` for PowerShell 7.
+- Identity and network-performance scripts wrote logs under `scripts/out/` while the toolkit's log viewer read `out/`; they now share `out/HelpdeskLogs`.
+- Replaced PowerShell 7-only `?:` and `??` operators (Extensions module, `Reset-Proxy`, `Export-ADUsers-LDAP`) so everything runs on Windows PowerShell 5.1.
+- `New-PlaybookReport` joined metadata with a literal `\n`.
 - CI now runs green on Windows and Linux (removed a setup action that no longer exists; pinned Pester and PSScriptAnalyzer).
 - Rewrote the Pester suite: one setup block per file, cross-platform paths, output isolated to `$TestDrive`.
 - `Export-ADObjects-NoRSAT.ps1` failed to parse; config lookup broke on case-sensitive filesystems; `Collect-SupportBundle` threw off Windows.
@@ -22,6 +31,9 @@ All notable changes to **PowerShell Playbook** will be documented here.
 - One-off repo maintenance scripts (`scripts/dev/Fix-*`, `Patch-*`, `Add-*`, `Tidy-Repo.ps1`, etc.) and the unused root `config/dev.json`.
 
 ### Added
+- CI fails on syntax that Windows PowerShell 5.1 cannot run (`PSUseCompatibleSyntax`).
+- Tests: every `.ps1`/`.psm1`/`.psd1` must parse; behavioral tests with mocked AD for password reset (`-WhatIf`, failure exit code), Teams cache reset (both clients, install folder untouched), and password generation.
+- Test runs no longer write any files into the repo.
 - `scripts/Export-ADObjects-NoRSAT.ps1`: `-Mock` mode to simulate AD objects for offline testing and CI (use `-MockCount` to control rows).
 
 ---

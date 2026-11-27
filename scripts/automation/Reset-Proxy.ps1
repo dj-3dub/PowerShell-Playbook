@@ -57,7 +57,9 @@ if ($Set) {
     Set-ItemProperty -Path $reg -Name ProxyEnable -Value 1 -Type DWord
     Set-ItemProperty -Path $reg -Name ProxyServer -Value $Proxy
     if ($Bypass) { Set-ItemProperty -Path $reg -Name ProxyOverride -Value $Bypass }
-    netsh winhttp set proxy proxy-server="$Proxy" @( $Bypass ? "bypass-list=$Bypass" : $null ) | Out-Null
+    $netshArgs = @('winhttp', 'set', 'proxy', "proxy-server=$Proxy")
+    if ($Bypass) { $netshArgs += "bypass-list=$Bypass" }
+    netsh @netshArgs | Out-Null
     Write-Host "Proxy set."
   }
   return

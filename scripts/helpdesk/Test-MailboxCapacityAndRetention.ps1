@@ -82,6 +82,9 @@ begin {
         throw "No Exchange mailbox cmdlets found. Connect to Exchange Online or open an Exchange Management Shell first."
     }
 
+    # Get-EXOMailbox returns a minimal property set unless these are requested explicitly.
+    $mailboxProps = 'ProhibitSendQuota', 'IssueWarningQuota', 'RetentionPolicy', 'ArchiveStatus', 'ArchiveDatabase'
+
     function Get-MailboxWrapper {
         param(
             [Parameter(Mandatory = $false)][string[]]$Id,
@@ -90,12 +93,12 @@ begin {
 
         if ($exoMailboxCmd) {
             if ($All) {
-                return Get-EXOMailbox -ResultSize Unlimited
+                return Get-EXOMailbox -ResultSize Unlimited -Properties $mailboxProps
             }
             elseif ($Id) {
                 $all = @()
                 foreach ($i in $Id) {
-                    $all += Get-EXOMailbox -Identity $i
+                    $all += Get-EXOMailbox -Identity $i -Properties $mailboxProps
                 }
                 return $all
             }
@@ -133,36 +136,35 @@ begin {
     function Convert-ToGB {
         param(
             [Parameter(Mandatory = $true)]
+            [AllowNull()]
             $Value
         )
 
         if ($null -eq $Value) { return $null }
 
-        # Try ByteQuantifiedSize (Value.ToBytes())
-        if ($Value -is [Microsoft.Exchange.Data.ByteQuantifiedSize]) {
+        # Live ByteQuantifiedSize (Exchange Management Shell / EXO V2 with types loaded)
+        if ($Value.PSObject.Methods['ToBytes']) {
             return [Math]::Round(($Value.ToBytes() / 1GB), 2)
         }
 
-        # Try string like "99.13 GB (106,512,345,678 bytes)"
-        if ($Value -is [string]) {
-            if ($Value -match '([\d\.,]+)\s*GB') {
-                [double]$num = ($matches[1] -replace ',', '.')
-                return [Math]::Round($num, 2)
-            }
+        # Deserialized/string form, e.g. "99.13 GB (106,443,612,160 bytes)": use the exact byte count
+        $text = [string]$Value
+        if ($text -match '\(([\d,\.\s]+)\s*bytes\)') {
+            $bytes = [double]($matches[1] -replace '[^\d]', '')
+            return [Math]::Round(($bytes / 1GB), 2)
         }
 
-        # Fallback: try to cast to double
-        try {
-            return [Math]::Round(([double]$Value / 1GB), 2)
+        # Plain number of bytes
+        $number = 0.0
+        if ([double]::TryParse($text, [ref]$number)) {
+            return [Math]::Round(($number / 1GB), 2)
         }
-        catch {
-            return $null
-        }
+
+        return $null
     }
 
     function Get-RetentionDetails {
         param(
-            [Parameter(Mandatory = $true)]
             [string]$PolicyName
         )
 
@@ -224,7 +226,7 @@ begin {
 
     # repo root + export folder (for CSV)
     $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-    $exportRoot = Join-Path $repoRoot 'exports\Mailboxes'
+    $exportRoot = Join-Path (Join-Path $repoRoot 'exports') 'Mailboxes'
     $null = New-Item -Path $exportRoot -ItemType Directory -Force -ErrorAction SilentlyContinue
 
     $script:results = New-Object System.Collections.Generic.List[object]
@@ -246,14 +248,16 @@ process {
     }
 
     foreach ($mbx in $mailboxes) {
-        Write-Verbose "Processing mailbox: $($mbx.UserPrincipalName ?? $mbx.PrimarySmtpAddress)"
+        # PowerShell 5.1-compatible (no '??' operator)
+        $mbxId = if ($mbx.UserPrincipalName) { $mbx.UserPrincipalName } else { [string]$mbx.PrimarySmtpAddress }
+        Write-Verbose "Processing mailbox: $mbxId"
 
         $stats = $null
         try {
-            $stats = Get-MailboxStatsWrapper -Identity ($mbx.UserPrincipalName ?? $mbx.PrimarySmtpAddress)
+            $stats = Get-MailboxStatsWrapper -Identity $mbxId
         }
         catch {
-            Write-Warning "Failed to get statistics for $($mbx.UserPrincipalName ?? $mbx.PrimarySmtpAddress): $_"
+            Write-Warning "Failed to get statistics for ${mbxId}: $_"
         }
 
         # Size / quota calculations
@@ -267,27 +271,58 @@ process {
 
         # Use ProhibitSendQuota as primary limit, fallback to IssueWarningQuota
         $quotaSource = $null
-        if ($mbx.ProhibitSendQuota -and $mbx.ProhibitSendQuota -ne 'Unlimited') {
+        if ($mbx.ProhibitSendQuota -and [string]$mbx.ProhibitSendQuota -ne 'Unlimited') {
             $quotaGB     = Convert-ToGB -Value $mbx.ProhibitSendQuota
             $quotaSource = 'ProhibitSendQuota'
         }
-        elseif ($mbx.IssueWarningQuota -and $mbx.IssueWarningQuota -ne 'Unlimited') {
+        elseif ($mbx.IssueWarningQuota -and [string]$mbx.IssueWarningQuota -ne 'Unlimited') {
             $quotaGB     = Convert-ToGB -Value $mbx.IssueWarningQuota
             $quotaSource = 'IssueWarningQuota'
         }
 
-        if ($quotaGB -and $totalSizeGB -ne $null -and $quotaGB -gt 0) {
+        if ($quotaGB -and $null -ne $totalSizeGB -and $quotaGB -gt 0) {
             $percentUsed = [Math]::Round(($totalSizeGB / $quotaGB) * 100, 2)
         }
 
-        $nearCapacity = $false
-        if ($percentUsed -ne $null -and $percentUsed -ge $WarningThresholdPercent) {
-            $nearCapacity = $true
-        }
+        $nearCapacity = ($null -ne $percentUsed -and $percentUsed -ge $WarningThresholdPercent)
 
         # Retention
-        $retentionInfo = Get-RetentionDetails -PolicyName $mbx.RetentionPolicy
+        $retentionInfo = Get-RetentionDetails -PolicyName ([string]$mbx.RetentionPolicy)
 
         # Archive
-        $archiveEnabl
+        $archiveEnabled = ([string]$mbx.ArchiveStatus -eq 'Active') -or [bool]$mbx.ArchiveDatabase
 
+        $row = [pscustomobject]@{
+            Mailbox                 = $mbxId
+            TotalSizeGB             = $totalSizeGB
+            QuotaGB                 = $quotaGB
+            QuotaSource             = $quotaSource
+            PercentUsed             = $percentUsed
+            NearCapacity            = $nearCapacity
+            ArchiveEnabled          = $archiveEnabled
+            RetentionPolicy         = $retentionInfo.RetentionPolicy
+            RetentionTags           = $retentionInfo.RetentionTags
+            HasOneYearArchivePolicy = $retentionInfo.HasOneYearArchivePolicy
+            Recommendation          = if ($nearCapacity -and -not $archiveEnabled) {
+                                          'Near quota with no archive: enable archive mailbox and a MoveToArchive policy'
+                                      } elseif ($nearCapacity -and -not $retentionInfo.HasOneYearArchivePolicy) {
+                                          'Near quota: assign a MoveToArchive retention tag (<= 1 year)'
+                                      } elseif ($nearCapacity) {
+                                          'Near quota: archive policy present; check archive processing (Start-ManagedFolderAssistant)'
+                                      } else { 'OK' }
+        }
+
+        $script:results.Add($row)
+        $row
+    }
+}
+
+end {
+    if (($ExportCsv -or $OutputPath) -and $script:results.Count -gt 0) {
+        $csvPath = if ($OutputPath) { $OutputPath } else {
+            Join-Path $exportRoot ('Test-MailboxCapacity-{0}.csv' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        }
+        $script:results | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
+        Write-Host "Report exported to: $csvPath" -ForegroundColor Green
+    }
+}

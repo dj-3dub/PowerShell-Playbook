@@ -31,7 +31,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-$logsRoot  = Join-Path -Path (Split-Path $scriptDir -Parent) -ChildPath 'out\HelpdeskLogs'
+# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Collect-HelpdeskLogs use)
+$repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
+$logsRoot  = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'out') -ChildPath 'HelpdeskLogs'
 
 if (-not (Test-Path $logsRoot)) {
     New-Item -Path $logsRoot -ItemType Directory -Force | Out-Null
@@ -74,6 +76,8 @@ try {
     return
 }
 
+$failed = $false
+
 try {
     $u = Get-ADUser -Identity $Identity -Properties LockedOut,Enabled -ErrorAction Stop
     LogLine ("Found: {0}, Enabled: {1}, LockedOut: {2}" -f $u.SamAccountName, $u.Enabled, $u.LockedOut)
@@ -100,7 +104,11 @@ try {
     }
 } catch {
     LogLine ("Unlock failed: {0}" -f $_.Exception.Message)
+    $failed = $true
 }
 
 Section "Complete"
 LogLine "Done."
+
+# Non-zero exit so callers (RMM, scheduled tasks, the toolkit menu) can detect failure.
+if ($failed) { exit 1 }

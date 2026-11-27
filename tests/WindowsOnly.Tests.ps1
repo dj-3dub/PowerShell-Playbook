@@ -3,10 +3,13 @@
 BeforeAll {
     $manifest = Join-Path (Split-Path -Parent $PSScriptRoot) 'src/PowerShellPlaybook.psd1'
     Import-Module $manifest -Force -ErrorAction Stop -WarningAction SilentlyContinue
+    # Write-ToolkitLog writes to ./logs relative to the current directory.
+    Push-Location $TestDrive
     $reports = Join-Path $TestDrive 'reports'
 }
 
 AfterAll {
+    Pop-Location
     Remove-Module PowerShellPlaybook -ErrorAction SilentlyContinue
 }
 
