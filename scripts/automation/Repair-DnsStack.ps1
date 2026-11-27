@@ -12,9 +12,9 @@
 .PARAMETER DnsServers
   One or more DNS server IPs. Required with -SetDns.
 .EXAMPLE
-  .\Fix-DnsStack.ps1 -Show
-  .\Fix-DnsStack.ps1 -Repair
-  .\Fix-DnsStack.ps1 -SetDns -Interface "Ethernet" -DnsServers 1.1.1.1, 8.8.8.8
+  .\Repair-DnsStack.ps1 -Show
+  .\Repair-DnsStack.ps1 -Repair
+  .\Repair-DnsStack.ps1 -SetDns -Interface "Ethernet" -DnsServers 1.1.1.1, 8.8.8.8
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(

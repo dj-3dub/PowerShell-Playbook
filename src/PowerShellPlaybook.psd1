@@ -12,14 +12,13 @@
 
     # Keep in sync with src/Public/*.ps1 (enforced by tests/ModuleLoad.Tests.ps1).
     FunctionsToExport = @(
-        'Collect-SupportBundle'
+        'Export-SupportBundle'
         'Get-CertificateExpiry'
         'Get-ConditionalAccessReport'
         'Get-DefenderStatus'
         'Get-ExchangeHygieneReport'
         'Get-InactiveAdAccounts'
         'Get-LocalAdminAudit'
-        'Get-LocalAdminReport'
         'Get-ServerRoleFeatureInventory'
         'Invoke-IntuneBaseline'
         'Invoke-WinGetBaseline'
@@ -28,7 +27,7 @@
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
-    AliasesToExport   = @()
+    AliasesToExport   = @('Collect-SupportBundle')
 
     PrivateData       = @{
         PSData = @{

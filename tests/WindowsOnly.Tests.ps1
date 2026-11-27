@@ -22,8 +22,12 @@ Describe 'Windows-only commands' {
         { Invoke-WinGetBaseline 6>$null } | Should -Not -Throw
     }
 
-    It 'Collect-SupportBundle creates or skips without throwing' {
-        { Collect-SupportBundle -OutputPath $reports -WarningAction SilentlyContinue 6>$null } | Should -Not -Throw
+    It 'Export-SupportBundle creates or skips without throwing' {
+        { Export-SupportBundle -OutputPath $reports -WarningAction SilentlyContinue 6>$null } | Should -Not -Throw
+    }
+
+    It 'keeps the Collect-SupportBundle alias for backward compatibility' {
+        (Get-Alias Collect-SupportBundle).Definition | Should -Be 'Export-SupportBundle'
     }
 
     Context 'On Windows' -Skip:(-not $IsWindows) {

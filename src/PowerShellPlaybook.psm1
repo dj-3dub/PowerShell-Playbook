@@ -13,4 +13,5 @@ foreach ($file in @($private + $public)) {
     }
 }
 
-Export-ModuleMember -Function $public.BaseName
+# Backward-compatible aliases for renamed commands.
+Export-ModuleMember -Function $public.BaseName -Alias 'Collect-SupportBundle'

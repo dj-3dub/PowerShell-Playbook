@@ -22,7 +22,7 @@
     Optional override for output root folder. Default is repoRoot\out\HelpdeskLogs.
 
 .EXAMPLE
-    .\Collect-HelpdeskLogs.ps1 -Verbose
+    .\Export-HelpdeskLogs.ps1 -Verbose
 #>
 
 [CmdletBinding()]

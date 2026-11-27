@@ -64,7 +64,7 @@ exo:
 
 local-admins:
 	@mkdir -p $(REPORTS)
-	$(call PWSH_RUN, Get-LocalAdminReport -OutputPath '$(REPORTS)')
+	$(call PWSH_RUN, Get-LocalAdminAudit -OutputPath '$(REPORTS)')
 
 defender:
 	@mkdir -p $(REPORTS)
@@ -76,7 +76,7 @@ ops: support certs
 
 support:
 	@mkdir -p $(REPORTS)
-	$(call PWSH_RUN, Collect-SupportBundle -OutputPath '$(REPORTS)')
+	$(call PWSH_RUN, Export-SupportBundle -OutputPath '$(REPORTS)')
 
 certs:
 	@mkdir -p $(REPORTS)
@@ -87,7 +87,7 @@ all-reports: identity security ops
 
 # --- Lint & test ---
 lint:
-	$(PWSH) -NoProfile -Command "Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Warning,Error -ReportSummary"
+	$(PWSH) -NoProfile -Command "'./src','./scripts' | ForEach-Object { Invoke-ScriptAnalyzer -Path \$$_ -Recurse -Settings ./PSScriptAnalyzerSettings.psd1 -ReportSummary }"
 
 test: lint
 	$(PWSH) -NoProfile -File ./Run-Tests.ps1

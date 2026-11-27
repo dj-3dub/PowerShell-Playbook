@@ -34,7 +34,7 @@ Write-Host "PS: $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
 Write-Host ""
 
 # --- Helper to ensure tools
-function Ensure-Module {
+function Install-ToolModule {
     param(
         [Parameter(Mandatory)] [string]$Name,
         [string]$MinimumVersion
@@ -52,15 +52,18 @@ function Ensure-Module {
 }
 
 # Optionally install/update tools
-Ensure-Module -Name 'Pester' -MinimumVersion '5.4.0'
-Ensure-Module -Name 'PSScriptAnalyzer' -MinimumVersion '1.21.0'
+Install-ToolModule -Name 'Pester' -MinimumVersion '5.4.0'
+Install-ToolModule -Name 'PSScriptAnalyzer' -MinimumVersion '1.21.0'
 
 # --- Lint if PSScriptAnalyzer is available
 $analyzer = Get-Module -ListAvailable -Name PSScriptAnalyzer | Sort-Object Version -Descending | Select-Object -First 1
 if ($analyzer) {
     Write-Host "`nLinting with PSScriptAnalyzer ($($analyzer.Version))..."
     try {
-        Invoke-ScriptAnalyzer -Path (Join-Path $root 'src') -Recurse -Severity Warning -ReportSummary
+        $settings = Join-Path $root 'PSScriptAnalyzerSettings.psd1'
+        foreach ($dir in 'src', 'scripts') {
+            Invoke-ScriptAnalyzer -Path (Join-Path $root $dir) -Recurse -Settings $settings -ReportSummary
+        }
     } catch {
         Write-Warning "ScriptAnalyzer failed: $($_.Exception.Message)"
     }
@@ -69,7 +72,7 @@ if ($analyzer) {
 }
 
 # --- Import module under test (helps Pester discovery)
-$manifest = Join-Path $root 'src\PowerShellPlaybook.psd1'
+$manifest = Join-Path (Join-Path $root 'src') 'PowerShellPlaybook.psd1'
 if (Test-Path $manifest) {
     try {
         Remove-Module PowerShellPlaybook -ErrorAction SilentlyContinue

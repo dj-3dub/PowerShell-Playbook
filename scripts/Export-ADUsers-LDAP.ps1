@@ -90,7 +90,7 @@ function New-DirectoryEntry {
 	}
 }
 
-function Run-ExportADUsersLDAP {
+function Invoke-ExportADUsersLDAP {
 	try {
 		Add-Type -AssemblyName System.DirectoryServices | Out-Null
 
@@ -160,4 +160,4 @@ function Run-ExportADUsersLDAP {
 }
 
 # Only execute when the script is run directly (not dot-sourced)
-if ($MyInvocation.InvocationName -ne '.') { Run-ExportADUsersLDAP }
+if ($MyInvocation.InvocationName -ne '.') { Invoke-ExportADUsersLDAP }

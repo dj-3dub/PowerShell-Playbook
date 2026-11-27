@@ -3,19 +3,19 @@
 Standalone scripts for one-off endpoint triage and repair. Each script includes comment-based help (`Get-Help <script> -Full`).
 
 ## Included
-- `Diagnose-SlowPC.ps1` — One-shot triage for slow PCs; HTML + TXT report and zipped bundle.
+- `Invoke-SlowPCDiagnostics.ps1` — One-shot triage for slow PCs; HTML + TXT report and zipped bundle.
 - `Repair-WindowsUpdate.ps1` — Reset WU components; optional scan/install via COM.
 - `Invoke-ChocoAppSync.ps1` — Chocolatey bootstrap + upgrade-all; ensure from `packages.config`.
 - `Export-LocalAdmins.ps1` — Export local Administrators group members (single/multiple hosts) to CSV.
 - `Collect-SupportBundle.ps1` — msinfo32, dxdiag, ipconfig, services, processes, event errors → zipped bundle.
 - `Reset-Proxy.ps1` — Show/clear/set WinHTTP & WinINET proxy settings.
 - `Repair-WindowsSearch.ps1` — Reset index, run SFC/DISM.
-- `Fix-DnsStack.ps1` — Show + repair DNS/Winsock; set DNS servers per interface.
+- `Repair-DnsStack.ps1` — Show + repair DNS/Winsock; set DNS servers per interface.
 
 ## Quick Usage
 ```powershell
 # 1) Slow PC triage
-.\scripts\automation\Diagnose-SlowPC.ps1 -Hours 3 -Verbose
+.\scripts\automation\Invoke-SlowPCDiagnostics.ps1 -Hours 3 -Verbose
 
 # 2) Windows Update reset + scan
 .\scripts\automation\Repair-WindowsUpdate.ps1 -Scan -Verbose
@@ -37,7 +37,7 @@ Standalone scripts for one-off endpoint triage and repair. Each script includes 
 .\scripts\automation\Repair-WindowsSearch.ps1 -ResetIndex -RunSfc
 
 # 8) DNS/Winsock fix
-.\scripts\automation\Fix-DnsStack.ps1 -Repair
+.\scripts\automation\Repair-DnsStack.ps1 -Repair
 ```
 
 ## Notes
