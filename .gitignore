@@ -1,34 +1,27 @@
-# PowerShell/VSCode
-.vscode/
-*.pscache
-*.psd1.orig
-*.psm1.orig
-
-# Logs/Reports/Artifacts
-logs/
-reports/
+# Generated output (scripts create these folders on demand)
 out/
+reports/
+logs/
+exports/
+.OutputRoot/
 *.zip
 
-# PowerShell build artifacts
-*.nupkg
-
-# Build & report outputs
-reports/
-out/
+# Test results
 test-results.xml
 testResults.xml
 *.nunit.xml
 
-# Local/editor
-.vscode/
-*.code-workspace
-
-# PowerShell
+# PowerShell build artifacts
+*.nupkg
+*.pscache
+*.psd1.orig
+*.psm1.orig
 *.psd1.tmp
 */bin/
 */obj/
 
-/out/
+# Editor / OS
+.vscode/
+*.code-workspace
 .DS_Store
 Thumbs.db

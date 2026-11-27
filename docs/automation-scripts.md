@@ -1,6 +1,6 @@
-# PowerShell-Playbook — New Automation Scripts (20251028-170120)
+# Automation scripts (`scripts/automation/`)
 
-Drop these into your repo under `Scripts/Automation/` (or adjust to your structure). Each script includes `-?` help.
+Standalone scripts for one-off endpoint triage and repair. Each script includes comment-based help (`Get-Help <script> -Full`).
 
 ## Included
 - `Diagnose-SlowPC.ps1` — One-shot triage for slow PCs; HTML + TXT report and zipped bundle.
@@ -15,29 +15,29 @@ Drop these into your repo under `Scripts/Automation/` (or adjust to your structu
 ## Quick Usage
 ```powershell
 # 1) Slow PC triage
-.\Scripts\Automation\Diagnose-SlowPC.ps1 -Hours 3 -Verbose
+.\scripts\automation\Diagnose-SlowPC.ps1 -Hours 3 -Verbose
 
 # 2) Windows Update reset + scan
-.\Scripts\Automation\Repair-WindowsUpdate.ps1 -Scan -Verbose
+.\scripts\automation\Repair-WindowsUpdate.ps1 -Scan -Verbose
 
 # 3) Chocolatey sync
-.\Scripts\Automation\Invoke-ChocoAppSync.ps1 -PackagesConfig .\packages.config
+.\scripts\automation\Invoke-ChocoAppSync.ps1 -PackagesConfig .\packages.config
 
 # 4) Export local admins from multiple machines
-.\Scripts\Automation\Export-LocalAdmins.ps1 -ComputerName PC01,PC02 -OutputCsv .\local-admins.csv
+.\scripts\automation\Export-LocalAdmins.ps1 -ComputerName PC01,PC02 -OutputCsv .\local-admins.csv
 
 # 5) Collect support bundle
-.\Scripts\Automation\Collect-SupportBundle.ps1
+.\scripts\automation\Collect-SupportBundle.ps1
 
 # 6) Proxy quick-fix
-.\Scripts\Automation\Reset-Proxy.ps1 -Show
-.\Scripts\Automation\Reset-Proxy.ps1 -Clear
+.\scripts\automation\Reset-Proxy.ps1 -Show
+.\scripts\automation\Reset-Proxy.ps1 -Clear
 
 # 7) Repair Windows Search
-.\Scripts\Automation\Repair-WindowsSearch.ps1 -ResetIndex -RunSfc
+.\scripts\automation\Repair-WindowsSearch.ps1 -ResetIndex -RunSfc
 
 # 8) DNS/Winsock fix
-.\Scripts\Automation\Fix-DnsStack.ps1 -Repair
+.\scripts\automation\Fix-DnsStack.ps1 -Repair
 ```
 
 ## Notes
