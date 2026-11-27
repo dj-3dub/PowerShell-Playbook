@@ -1,10 +1,40 @@
-# 📑 Changelog
+# Changelog
 
-All notable changes to **PowerShell Playbook** will be documented here.
+All notable changes to PowerShell Playbook are documented here. Versions refer to the `PowerShellPlaybook` module.
 
 ---
 
-## [Unreleased]
+## [Unreleased] (0.3.0)
+
+### Changed
+- **Extensions module** no longer returns placeholder numbers. Each report function queries the live system through the vendor module's session, returns a `NotConnected` row with guidance when it can't, or returns labelled sample data with `-Mock`. Rows are graded OK / Warn / Fail; HTML reports are colour-coded and HTML-encoded. Removed the no-op `-Remediate` switch and the simulated restore test.
+- `Invoke-IntuneBaseline` reads Intune compliance from Graph; `-Enforce` triggers a device sync on non-compliant devices (was a 100 ms sleep). Returns device objects.
+- `Get-ConditionalAccessReport` and `Get-ExchangeHygieneReport` use mock data only when the config sets `UseMockData`; otherwise they fail with guidance instead of silently showing mock data.
+- Renamed to approved verbs: `Collect-SupportBundle` -> `Export-SupportBundle` (alias kept); scripts `Diagnose-SlowPC` -> `Invoke-SlowPCDiagnostics`, `Fix-DnsStack` -> `Repair-DnsStack`, `Collect-HelpdeskLogs` -> `Export-HelpdeskLogs`, `Force-PasswordReset` -> `Reset-UserPassword`, `Setup-DevEnvironment` -> `Initialize-DevEnvironment`.
+- Module versions: PowerShellPlaybook 0.3.0, Extensions 0.2.0. Licensed under MIT.
+- README rewritten with screenshots, architecture diagram and design notes; `docs/automation-scripts.md` rewritten to match the scripts.
+
+### Removed
+- Duplicates: `Get-LocalAdminReport` and `scripts/automation/Export-LocalAdmins.ps1` (use `Get-LocalAdminAudit`); `scripts/automation/Repair-WindowsUpdate.ps1` and `Collect-SupportBundle.ps1` (merged into the helpdesk script and module function); `New-HelpdeskTicketBundle.ps1` (broken; use `Export-HelpdeskLogs.ps1 -TicketId`).
+
+### Fixed
+- `Invoke-IntuneBaseline` failed on every run (`ForEach-Object -Parallel` with `-ArgumentList`).
+- `Get-VMwareHealth` never reported snapshots (read a nonexistent `$vm.Snapshot`).
+- `Get-CertificateExpiry` ignored `-ExpiresInDays`.
+- `Get-DefenderStatus` and `Invoke-WinGetBaseline` did nothing on Windows PowerShell 5.1.
+- `Invoke-ChocoAppSync` failed on every run (`Test-Path $x -and ...`, single-token choco arguments).
+- `Repair-WindowsUpdate -Install` now downloads updates before installing them.
+- `New-WinServerVmFromTemplate` help was ignored by `Get-Help` (invalid `.REQUIREMENTS` keyword).
+- `Write-ToolkitLog` now writes valid JSON Lines and no longer forces verbose output.
+- `-Environment Test` / `Prod` threw (missing config files).
+
+### Added
+- `PSScriptAnalyzerSettings.psd1`; CI lints `scripts/` as well as `src/`.
+- Help on every exported command (enforced by a test); tests for the Extensions live paths (mocked Az/Veeam), Intune enforcement, and no-silent-mock behaviour.
+
+---
+
+## [0.2.0] - 2026-11-27
 
 ### Fixed
 - Five helpdesk scripts failed to parse and could not run: four used `"$var: ..."` in strings (`Test-VpnDiagnostics`, `Test-EndpointPreflight`, `Reset-BrowserProfile`, `Test-BitLockerHealth`), and `Test-MailboxCapacityAndRetention` was truncated mid-statement.
@@ -38,25 +68,10 @@ All notable changes to **PowerShell Playbook** will be documented here.
 
 ---
 
-## [2025-09-24] – 🚀 Repo Refresh & VMware Mock Deploy
+## [0.1.0] - 2025-09-24
 
-### ✨ Added
-- **Mock VMware Deployment Script**  
-  `scripts/dev/Invoke-WinServerVmBuild-Mock.ps1`  
-  - Simulates a Windows Server deployment in VMware (no vCenter required).  
-  - Attaches 4 NICs and configures 2 NIC teams.  
-  - Handles sizing (CPU, memory, disk) and IP/DNS config.  
-  - Ideal for demonstrating automation workflows in interviews or labs.
+### Added
+- `scripts/dev/Invoke-WinServerVmBuild-Mock.ps1`: dry-run of a Windows Server build in vSphere (no vCenter required): 4 NICs, 2 NIC teams, CPU/memory/disk sizing and IP/DNS configuration.
 
-### 📝 Changed
-- **README.md**
-  - Updated repo name to **PowerShell Playbook**
-  - Improved layout and section flow
-  - Added VMware mock deployment usage example
-  - Cleaned up repo structure section
-  - Fixed formatting in code snippets
-  - Refined Topics list for discoverability
-
-### ✅ Improvements
-- Project docs now align with current scope of the repo
-- README is recruiter-ready and portfolio-friendly
+### Changed
+- Renamed the repository to PowerShell Playbook and restructured the README.

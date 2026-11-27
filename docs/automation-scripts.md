@@ -1,46 +1,53 @@
-# Automation scripts (`scripts/automation/`)
+# Automation scripts
 
-Standalone scripts for one-off endpoint triage and repair. Each script includes comment-based help (`Get-Help <script> -Full`).
+Standalone scripts outside the modules. Each has comment-based help (`Get-Help <script> -Full`)
+unless noted, and state-changing scripts support `-WhatIf`.
 
-## Included
-- `Invoke-SlowPCDiagnostics.ps1` — One-shot triage for slow PCs; HTML + TXT report and zipped bundle.
-- `Repair-WindowsUpdate.ps1` — Reset WU components; optional scan/install via COM.
-- `Invoke-ChocoAppSync.ps1` — Chocolatey bootstrap + upgrade-all; ensure from `packages.config`.
-- `Export-LocalAdmins.ps1` — Export local Administrators group members (single/multiple hosts) to CSV.
-- `Collect-SupportBundle.ps1` — msinfo32, dxdiag, ipconfig, services, processes, event errors → zipped bundle.
-- `Reset-Proxy.ps1` — Show/clear/set WinHTTP & WinINET proxy settings.
-- `Repair-WindowsSearch.ps1` — Reset index, run SFC/DISM.
-- `Repair-DnsStack.ps1` — Show + repair DNS/Winsock; set DNS servers per interface.
+## Endpoint triage and repair (`scripts/automation/`)
 
-## Quick Usage
-```powershell
-# 1) Slow PC triage
-.\scripts\automation\Invoke-SlowPCDiagnostics.ps1 -Hours 3 -Verbose
+| Script | Purpose | Example |
+|---|---|---|
+| `Invoke-SlowPCDiagnostics.ps1` | "My PC is slow" triage: top processes, startup items, disk, recent errors, pending updates; HTML + TXT report | `.\Invoke-SlowPCDiagnostics.ps1 -Hours 3` |
+| `Repair-DnsStack.ps1` | Show or repair DNS/Winsock; set DNS servers per interface | `.\Repair-DnsStack.ps1 -Repair` |
+| `Repair-WindowsSearch.ps1` | Restart Windows Search, rebuild the index, optionally SFC/DISM | `.\Repair-WindowsSearch.ps1 -ResetIndex -RunSfc` |
+| `Reset-Proxy.ps1` | Show, clear or set WinHTTP and WinINET proxy | `.\Reset-Proxy.ps1 -Set -Proxy proxy:8080 -Bypass '*.corp.local'` |
 
-# 2) Windows Update reset + scan
-.\scripts\automation\Repair-WindowsUpdate.ps1 -Scan -Verbose
+The Windows Update repair and log bundle live in the Helpdesk Toolkit
+(`scripts/helpdesk/Repair-WindowsUpdate.ps1`, `scripts/helpdesk/Export-HelpdeskLogs.ps1`).
 
-# 3) Chocolatey sync
-.\scripts\automation\Invoke-ChocoAppSync.ps1 -PackagesConfig .\packages.config
+## Provisioning
 
-# 4) Export local admins from multiple machines
-.\scripts\automation\Export-LocalAdmins.ps1 -ComputerName PC01,PC02 -OutputCsv .\local-admins.csv
+| Script | Purpose | Example |
+|---|---|---|
+| `New-BatchAdUser.ps1` | Bulk-create AD users from CSV with groups; unique random passwords, change at first logon; `-Offline` preview | `.\New-BatchAdUser.ps1 -CsvPath .\scripts\data\new-hires.csv -Offline` |
+| `Invoke-StandardBuild.ps1` | Install the standard app set from `config/software-build.json` (WinGet) | `.\Invoke-StandardBuild.ps1 -ConfigPath .\config\software-build.json` |
+| `Invoke-ChocoAppSync.ps1` | Bootstrap Chocolatey, upgrade all, ensure a `packages.config` | `.\Invoke-ChocoAppSync.ps1 -PackagesConfig .\packages.config` |
+| `../Initialize-DevEnvironment.ps1` | Workstation setup for working on this repo (Git, VS Code, .NET SDK, Pester, PSScriptAnalyzer, Graph, EXO) | `.\scripts\Initialize-DevEnvironment.ps1` |
 
-# 5) Collect support bundle
-.\scripts\automation\Collect-SupportBundle.ps1
+## Active Directory export (`scripts/`)
 
-# 6) Proxy quick-fix
-.\scripts\automation\Reset-Proxy.ps1 -Show
-.\scripts\automation\Reset-Proxy.ps1 -Clear
+| Script | Purpose | Example |
+|---|---|---|
+| `Export-ADObjects-NoRSAT.ps1` | Export users/computers/groups over LDAP without RSAT; `-Mock` generates sample data | `.\Export-ADObjects-NoRSAT.ps1 -ObjectType User -Mock -MockCount 50` |
+| `Invoke-ADExport.ps1` | Run several exports defined in `ad-export.config.json` | `.\Invoke-ADExport.ps1 -Mock` |
+| `Export-ADUsers-LDAP.ps1` | Focused user export via `System.DirectoryServices`, LDAPS optional | `.\Export-ADUsers-LDAP.ps1 -Server dc01 -SearchBase 'DC=corp,DC=local' -UseLDAPS` |
 
-# 7) Repair Windows Search
-.\scripts\automation\Repair-WindowsSearch.ps1 -ResetIndex -RunSfc
+## Windows 11 hardening and debloat (`scripts/`)
 
-# 8) DNS/Winsock fix
-.\scripts\automation\Repair-DnsStack.ps1 -Repair
-```
+These scripts have no comment-based help yet. Read the `param()` block before running them.
 
-## Notes
-- Prefer running elevated (`Run as administrator`) for full fidelity.
-- Scripts avoid external dependencies unless noted (Chocolatey installer uses its official bootstrapper).
-- Use `-Verbose` to see progress and `-WhatIf` in scripts that support it.
+| Script | Purpose |
+|---|---|
+| `Invoke-Win11Debloat.ps1` | Orchestrates the three below. `-Mode Audit` (default) reports; `-Mode Remove` applies |
+| `Remove-PreinstalledApps.ps1` | Remove Appx packages matching `config/debloat-appx.json` (keep/remove patterns) |
+| `Set-ConsumerExperience.ps1` | Disable consumer features (suggested apps, tips) via policy registry keys |
+| `Set-EnterpriseDefaults.ps1` | Disable Remote Assistance, Xbox services, and set telemetry to Basic |
+
+## Module tooling (`scripts/`)
+
+| Script | Purpose |
+|---|---|
+| `Publish-Module.ps1` | Stage `PowerShellPlaybook` into `out/PowerShellPlaybook` for `Publish-Module` or copying to a module path |
+| `Install-ProviderModules.ps1` | Check for the vendor modules used in live mode and install missing ones for the current user |
+| `dev/Invoke-WinServerVmBuild-Mock.ps1` | Dry-run walkthrough of the vSphere build that `New-WinServerVmFromTemplate` performs |
+| `dev/Start-ReportServer.sh` | Serve `./reports` with an index page for viewing reports from another machine |

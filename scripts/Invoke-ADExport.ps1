@@ -85,4 +85,4 @@ foreach ($job in $jobs) {
     Write-Host ""
 }
 
-Write-Host "✅ All jobs complete." -ForegroundColor Green
+Write-Host "All jobs complete." -ForegroundColor Green
