@@ -1,4 +1,4 @@
-# ---- PowerShell-Automation-Toolkit Makefile ----
+# ---- PowerShell Playbook Makefile ----
 # Quick refs:
 #   make identity           # Inactive AD + Password expiry (preview)
 #   make security           # CA + Exchange hygiene + Local Admins + Defender status
@@ -13,7 +13,8 @@
 #   make certs              # Certificate expiry
 #   make support            # Support bundle (zips to ./reports)
 #   make serve              # Serve ./reports on http://<host>:PORT
-#   make test               # Run full Pester suite
+#   make lint               # PSScriptAnalyzer over ./src
+#   make test               # Lint + full Pester suite
 #   make clean-*            # Clean artifacts
 #
 # Vars you can override:
@@ -28,12 +29,12 @@ DAYS_EXPIRY ?= 14
 PORT ?= 8080
 
 define PWSH_RUN
-$(PWSH) -NoProfile -Command "Import-Module ./src/EnterpriseOpsToolkit.psd1 -Force; $1"
+$(PWSH) -NoProfile -Command "Import-Module ./src/PowerShellPlaybook.psd1 -Force; $1"
 endef
 
 .PHONY: help identity security ops all-reports \
         run-inactive run-expiry ca exo local-admins defender certs support \
-        test serve clean-out clean-reports
+        lint test serve clean-out clean-reports
 
 help:
 	@sed -n '1,80p' Makefile | sed -n '1,50p' | sed -n '1,80p' >/dev/null || true
@@ -84,9 +85,12 @@ certs:
 # --- Everything we can run safely on Linux ---
 all-reports: identity security ops
 
-# --- Test runner ---
-test:
-	$(PWSH) -NoProfile -ExecutionPolicy Bypass -File ./Run-Tests.ps1
+# --- Lint & test ---
+lint:
+	$(PWSH) -NoProfile -Command "Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Warning,Error -ReportSummary"
+
+test: lint
+	$(PWSH) -NoProfile -File ./Run-Tests.ps1
 
 # --- Static file server for reports ---
 serve:
@@ -98,14 +102,3 @@ clean-out:
 
 clean-reports:
 	@rm -rf $(REPORTS)
-
-SHELL := /usr/bin/pwsh
-
-.PHONY: test lint
-
-lint:
-	@pwsh -NoProfile -ExecutionPolicy Bypass -Command "Invoke-ScriptAnalyzer -Path './src' -Recurse -Severity Warning -ReportSummary"
-
-test: lint
-	@pwsh -NoProfile -ExecutionPolicy Bypass -File ./Run-Tests.ps1
-

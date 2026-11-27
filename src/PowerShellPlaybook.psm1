@@ -1,9 +1,16 @@
 # PowerShell Playbook module loader
+# Private helpers are loaded but not exported; each file in Public/ defines
+# one function named after the file, and only those are exported.
 
-# --- Auto-load Private helpers
-Get-ChildItem -Path (Join-Path $PSScriptRoot 'Private') -Filter *.ps1 -File -ErrorAction SilentlyContinue |
-ForEach-Object { . $_.FullName }
+$private = @(Get-ChildItem -Path (Join-Path $PSScriptRoot 'Private') -Filter *.ps1 -File -ErrorAction SilentlyContinue)
+$public  = @(Get-ChildItem -Path (Join-Path $PSScriptRoot 'Public')  -Filter *.ps1 -File -ErrorAction SilentlyContinue)
 
-# --- Auto-load Public functions
-Get-ChildItem -Path (Join-Path $PSScriptRoot 'Public') -Filter *.ps1 -File -ErrorAction SilentlyContinue |
-ForEach-Object { . $_.FullName }
+foreach ($file in @($private + $public)) {
+    try {
+        . $file.FullName
+    } catch {
+        Write-Error "Failed to load $($file.FullName): $_"
+    }
+}
+
+Export-ModuleMember -Function $public.BaseName

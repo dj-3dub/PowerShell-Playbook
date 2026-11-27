@@ -1,43 +1,28 @@
-# tests/Reports.Tests.ps1
-# Purpose: Validate that HTML/CSV reports are produced to a real path.
+# Validates that report generators produce HTML files (mock data where no tenant/domain exists).
 
 BeforeAll {
-  $root = Split-Path -Parent $PSCommandPath
-  $repo = Split-Path -Parent $root
-  $manifest = Join-Path $repo 'src\PowerShellPlaybook.psd1'
+    $manifest = Join-Path (Split-Path -Parent $PSScriptRoot) 'src/PowerShellPlaybook.psd1'
+    Import-Module $manifest -Force -ErrorAction Stop -WarningAction SilentlyContinue
+    $reports = Join-Path $TestDrive 'reports'
+}
 
-  if (-not (Test-Path $manifest)) {
-    throw "Module manifest not found at: $manifest"
-  }
-
-  Remove-Module PowerShellPlaybook -ErrorAction SilentlyContinue
-  Import-Module $manifest -Force
-
-  $script:reports = Join-Path $repo 'reports'
-  New-Item -ItemType Directory -Force -Path $script:reports | Out-Null
+AfterAll {
+    Remove-Module PowerShellPlaybook -ErrorAction SilentlyContinue
 }
 
 Describe 'Report generators' {
-  It 'creates Conditional Access HTML (mock ok)' {
-    $out = Get-ConditionalAccessReport -Environment Dev -OutputPath $script:reports -Verbose:($false)
-    # Function returns path or object; assert the file exists
-    # Try to discover the newest CA html in reports:
-    $html = Get-ChildItem $script:reports -Filter 'ConditionalAccess-*.html' | Sort-Object LastWriteTime -Desc | Select-Object -First 1
-    $html | Should -Not -BeNullOrEmpty
-    Test-Path $html.FullName | Should -BeTrue
-  }
+    It 'creates a Conditional Access HTML report (mock config)' {
+        $null = Get-ConditionalAccessReport -Environment Dev -OutputPath $reports
+        Get-ChildItem $reports -Filter 'ConditionalAccess-*.html' | Should -Not -BeNullOrEmpty
+    }
 
-  It 'creates Local Admin report HTML (mock ok on non-domain)' {
-    $null = Get-LocalAdminReport -OutputPath $script:reports -Verbose:($false)
-    $html = Get-ChildItem $script:reports -Filter 'LocalAdmins-*.html' | Sort-Object LastWriteTime -Desc | Select-Object -First 1
-    $html | Should -Not -BeNullOrEmpty
-    Test-Path $html.FullName | Should -BeTrue
-  }
+    It 'creates a Local Admin HTML report' {
+        $null = Get-LocalAdminReport -OutputPath $reports 6>$null
+        Get-ChildItem $reports -Filter 'LocalAdmins-*.html' | Should -Not -BeNullOrEmpty
+    }
 
-  It 'creates Certificate Expiry HTML (mock ok on non-Windows too)' {
-    $null = Get-CertificateExpiry -Days 60 -OutputPath $script:reports -Verbose:($false)
-    $html = Get-ChildItem $script:reports -Filter 'CertExpiry-*.html' | Sort-Object LastWriteTime -Desc | Select-Object -First 1
-    $html | Should -Not -BeNullOrEmpty
-    Test-Path $html.FullName | Should -BeTrue
-  }
+    It 'creates a Certificate Expiry HTML report' {
+        $null = Get-CertificateExpiry -ExpiresInDays 60 -OutputPath $reports 6>$null
+        Get-ChildItem $reports -Filter 'CertExpiry-*.html' | Should -Not -BeNullOrEmpty
+    }
 }

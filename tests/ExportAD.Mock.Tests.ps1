@@ -1,21 +1,19 @@
-Describe 'Export-ADObjects-NoRSAT -Mock mode' {
-    It 'creates a CSV file with expected columns' {
-        $out = Join-Path $PSScriptRoot '..\exports\test_users_mock.csv' | Resolve-Path -ErrorAction SilentlyContinue
-        if ($out) { Remove-Item $out -Force -ErrorAction SilentlyContinue }
+# Export-ADObjects-NoRSAT in -Mock mode needs no domain, so it runs on any platform.
 
-        & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\scripts\Export-ADObjects-NoRSAT.ps1') -ObjectType User -Mock -MockCount 5 -OutputPath (Join-Path $PSScriptRoot '..\exports\test_users_mock.csv') -NoBOM:$true
+BeforeAll {
+    $script = Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts/Export-ADObjects-NoRSAT.ps1'
+}
 
-        $file = Join-Path $PSScriptRoot '..\exports\test_users_mock.csv'
-        Test-Path $file | Should -BeTrue
+Describe 'Export-ADObjects-NoRSAT -Mock' {
+    It 'writes a CSV with the requested number of rows and expected columns' {
+        $out = Join-Path $TestDrive 'users_mock.csv'
 
-        $csv = Import-Csv $file -ErrorAction Stop
-        $csv.Count | Should -BeGreaterThan 0
+        & $script -ObjectType User -Mock -MockCount 5 -OutputPath $out -NoBOM 6>$null | Out-Null
 
-        # Basic column checks
-        $expected = @('Name','SamAccountName')
-        foreach ($col in $expected) { $csv[0].PSObject.Properties.Name -contains $col | Should -BeTrue }
-
-        # Cleanup
-        Remove-Item $file -Force -ErrorAction SilentlyContinue
+        $out | Should -Exist
+        $csv = @(Import-Csv $out)
+        $csv.Count | Should -Be 5
+        $csv[0].PSObject.Properties.Name | Should -Contain 'Name'
+        $csv[0].PSObject.Properties.Name | Should -Contain 'SamAccountName'
     }
 }

@@ -1,4 +1,4 @@
-[<#
+<#
 .SYNOPSIS
 NO-RSAT AD Exporter with optional MOCK mode for offline testing.
 
