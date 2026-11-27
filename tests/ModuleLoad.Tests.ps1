@@ -10,6 +10,7 @@ BeforeAll {
     $manifest = Join-Path (Split-Path -Parent $PSScriptRoot) 'src/PowerShellPlaybook.psd1'
     Import-Module $manifest -Force -ErrorAction Stop -WarningAction SilentlyContinue
     $exported = (Get-Command -Module PowerShellPlaybook).Name
+    $publicNames = (Get-ChildItem -Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/Public') -Filter *.ps1 -File).BaseName
 }
 
 AfterAll {
@@ -25,8 +26,14 @@ Describe 'PowerShellPlaybook module' {
         $exported | Should -Contain $Name
     }
 
+    It 'manifest FunctionsToExport matches src/Public exactly' {
+        $declared = (Import-PowerShellDataFile $manifest).FunctionsToExport
+        $onDisk   = $publicNames
+        Compare-Object @($declared) @($onDisk) | Should -BeNullOrEmpty -Because 'every src/Public file must be listed in the manifest and vice versa'
+    }
+
     It 'does not export private helpers' {
-        $exported | Should -Not -Contain 'Get-EotConfig'
+        $exported | Should -Not -Contain 'Get-PlaybookConfig'
         $exported | Should -Not -Contain 'Invoke-WithRetry'
     }
 }

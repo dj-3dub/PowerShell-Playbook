@@ -12,7 +12,7 @@
     Author = 'Tim Heverin'
 
     # Company or vendor of this module
-    CompanyName = 'EnterpriseOpsToolkit'
+    CompanyName = 'PowerShell Playbook'
 
     # Copyright statement for this module
     Copyright = '(c) Tim Heverin. All rights reserved.'

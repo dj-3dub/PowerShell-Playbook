@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start-ReportServer.sh
-# Serve your PowerShell-Automation-Toolkit reports with a pretty index.
+# Serve your PowerShell Playbook reports with a pretty index.
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ TMP="${INDEX}.tmp"
 {
   echo "<!doctype html><html><head><meta charset='utf-8'/>"
   echo "<meta http-equiv='refresh' content='10'/>"
-  echo "<title>PowerShell Automation Toolkit — Reports</title>"
+  echo "<title>PowerShell Playbook — Reports</title>"
   cat <<'CSS'
 <style>
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:32px;max-width:1000px}
@@ -44,7 +44,7 @@ footer{color:#888;margin-top:20px;font-size:12px}
 </style>
 CSS
   echo "</head><body>"
-  echo "<h1>PowerShell Automation Toolkit</h1>"
+  echo "<h1>PowerShell Playbook</h1>"
   echo "<p class='subtitle'>Report directory index (auto-refreshes every 10s)</p>"
 
   # Table header
@@ -76,7 +76,7 @@ CSS
   echo "</body></html>"
 } >"$TMP" && mv "$TMP" "$INDEX"
 
-echo "=== PowerShell Automation Toolkit Report Server ==="
+echo "=== PowerShell Playbook Report Server ==="
 echo "Serving: $REPORTS_DIR"
 echo "Index:   http://$IP:$PORT/"
 echo "Tip:     This page auto-refreshes every 10 seconds."

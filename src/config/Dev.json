@@ -2,7 +2,7 @@
   "UseMockData": true,
   "TenantName": "Contoso",
   "ReportBranding": {
-    "TitlePrefix": "PowerShell Automation Toolkit",
+    "TitlePrefix": "PowerShell Playbook",
     "Author": "Tim Heverin"
   }
 }

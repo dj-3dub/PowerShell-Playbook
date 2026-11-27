@@ -1,13 +1,13 @@
-# 🌟 Helpdesk Automation Pack (Feature Branch)
-### *A portfolio-focused edition of the PowerShell Playbook featuring an extended Helpdesk Automation Toolkit.*
+# PowerShell Playbook
 
-This feature branch contains: 
-- The full Helpdesk Automation Toolkit (diagnostics + repair modules)  
-- Endpoint health checks, VPN testing, Outlook/Teams/browser resets, OneDrive repair, BitLocker checks, and more  
-- Enhanced documentation designed to showcase automation strategy, engineering depth, and standardized troubleshooting practices  
+[![CI](https://github.com/dj-3dub/PowerShell-Playbook/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dj-3dub/PowerShell-Playbook/actions/workflows/ci.yml)
 
-This branch serves as an expanded demonstration of automation capability and endpoint engineering methodology.  
-The `main` branch retains the core PowerShell module structure and production scripting.
+PowerShell automation for helpdesk and endpoint operations, in two parts:
+
+- **Helpdesk Toolkit** (`scripts/helpdesk/`): a menu launcher for common diagnostics and repairs (Outlook/Teams/browser resets, OneDrive and OST repair, VPN, network performance and BitLocker checks, AD unlock and password reset)
+- **`PowerShellPlaybook` module** (`src/`): identity, security and endpoint reports for AD, Entra ID, Intune, Exchange Online and Windows, with mock data when no tenant or domain is reachable
+
+Linted with PSScriptAnalyzer and tested with Pester on Windows and Linux in CI.
 
 ---
 

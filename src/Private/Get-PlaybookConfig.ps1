@@ -1,4 +1,4 @@
-function Get-EotConfig {
+function Get-PlaybookConfig {
     [CmdletBinding()]
     param(
         [ValidateSet('Dev','Test','Prod')]
