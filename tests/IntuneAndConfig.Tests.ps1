@@ -33,13 +33,17 @@ Describe 'Invoke-IntuneBaseline' {
 }
 
 Describe 'Live mode without a connection' {
-    # Prod config has UseMockData = false and nothing is installed/connected on CI.
+    # Prod config has UseMockData = false and nothing is connected on CI. Depending on the runner image the
+    # vendor module may or may not be installed, so accept either guidance message, but never mock output.
     It '<Name> fails loudly instead of falling back to mock data' -ForEach @(
         @{ Name = 'Invoke-IntuneBaseline';       Run = { Invoke-IntuneBaseline -Environment Prod -OutputPath $TestDrive } }
         @{ Name = 'Get-ConditionalAccessReport'; Run = { Get-ConditionalAccessReport -Environment Prod -OutputPath $TestDrive } }
         @{ Name = 'Get-ExchangeHygieneReport';   Run = { Get-ExchangeHygieneReport -Environment Prod -OutputPath $TestDrive } }
     ) {
-        { & $Run } | Should -Throw -ExpectedMessage '*Install-Module*'
+        $err = $null
+        try { & $Run } catch { $err = $_ }
+        $err | Should -Not -BeNullOrEmpty -Because 'live mode without a session must not produce a (mock) report'
+        $err.Exception.Message | Should -Match 'Install-Module|Connect-(MgGraph|ExchangeOnline)'
     }
 }
 
