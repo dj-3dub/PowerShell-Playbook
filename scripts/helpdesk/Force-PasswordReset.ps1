@@ -31,7 +31,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-$logsRoot  = Join-Path -Path (Split-Path $scriptDir -Parent) -ChildPath 'out\HelpdeskLogs'
+# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Collect-HelpdeskLogs use)
+$repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
+$logsRoot  = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'out') -ChildPath 'HelpdeskLogs'
 
 if (-not (Test-Path $logsRoot)) {
     New-Item -Path $logsRoot -ItemType Directory -Force | Out-Null
@@ -75,6 +77,8 @@ try {
     return
 }
 
+$failed = $false
+
 try {
     $u = Get-ADUser -Identity $Identity -Properties Enabled -ErrorAction Stop
     LogLine ("Found: {0}, Enabled: {1}" -f $u.SamAccountName, $u.Enabled)
@@ -98,19 +102,27 @@ try {
     $setChange = Read-Host "Require change at next logon? (Y/N, default Y)"
     $requireChange = -not ($setChange -match '^[Nn]')
 
-    if ($PSCmdlet.ShouldProcess($Identity, "Set-ADAccountPassword -Reset")) {
+    # Both changes sit behind one ShouldProcess so -WhatIf changes nothing.
+    $action = 'Reset password'
+    if ($requireChange) { $action += ' and require change at next logon' }
+
+    if ($PSCmdlet.ShouldProcess($Identity, $action)) {
         Set-ADAccountPassword -Identity $Identity -Reset -NewPassword $tempPwd -ErrorAction Stop
         LogLine "Password reset successful."
-    }
 
-    if ($requireChange) {
-        Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true -ErrorAction Stop
-        LogLine "Set ChangePasswordAtLogon = true"
+        if ($requireChange) {
+            Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true -ErrorAction Stop
+            LogLine "Set ChangePasswordAtLogon = true"
+        }
     }
 
 } catch {
     LogLine ("Password reset failed: {0}" -f $_.Exception.Message)
+    $failed = $true
 }
 
 Section "Complete"
 LogLine "Done."
+
+# Non-zero exit so callers (RMM, scheduled tasks, the toolkit menu) can detect failure.
+if ($failed) { exit 1 }

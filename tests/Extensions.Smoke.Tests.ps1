@@ -2,9 +2,9 @@
 
 BeforeAll {
     $modulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'src/PowerShell-Playbook.Extensions.psd1'
-    Import-Module $modulePath -Force -ErrorAction Stop
-    # The extension functions write under ./out, so run them from inside TestDrive.
+    # The module fixes its output root (./out) at import time, so import from inside TestDrive.
     Push-Location $TestDrive
+    Import-Module $modulePath -Force -ErrorAction Stop
 }
 
 AfterAll {

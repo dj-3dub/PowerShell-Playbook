@@ -80,7 +80,7 @@ function New-PlaybookReport {
   </style>
 '@
   $metaHtml = if ($Meta) {
-    ($Meta.GetEnumerator() | ForEach-Object { "<span class='kpi'><b>$($_.Key):</b> $($_.Value)</span>" }) -join "\n"
+    ($Meta.GetEnumerator() | ForEach-Object { "<span class='kpi'><b>$($_.Key):</b> $($_.Value)</span>" }) -join "`n"
   }
   else { '' }
 
@@ -155,7 +155,7 @@ function Invoke-WindowsUpdateBaseline {
         $searcher  = $session.CreateUpdateSearcher()
         $result    = $searcher.Search('IsInstalled=0 and Type="Software"')
         $pending   = @($result.Updates).Count
-        $rows.Add([pscustomobject]@{ Provider='WSUS'; Host=$env:COMPUTERNAME; Status=($pending -gt 0 ? 'Pending' : 'Compliant'); Pending=$pending; RebootRequired=$false; LastScan=Get-Date })
+        $rows.Add([pscustomobject]@{ Provider='WSUS'; Host=$env:COMPUTERNAME; Status=$(if ($pending -gt 0) { 'Pending' } else { 'Compliant' }); Pending=$pending; RebootRequired=$false; LastScan=Get-Date })
       } catch {
         Write-Warning 'Windows Update COM API not available.'
         $rows.Add([pscustomobject]@{ Provider='WSUS'; Host=$env:COMPUTERNAME; Status='ScanError'; Pending=$null; RebootRequired=$null; LastScan=$null })

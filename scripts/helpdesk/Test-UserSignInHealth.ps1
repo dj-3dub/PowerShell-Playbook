@@ -34,7 +34,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-$logsRoot  = Join-Path -Path (Split-Path $scriptDir -Parent) -ChildPath 'out\HelpdeskLogs'
+# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Collect-HelpdeskLogs use)
+$repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
+$logsRoot  = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'out') -ChildPath 'HelpdeskLogs'
 
 if (-not (Test-Path $logsRoot)) {
     New-Item -Path $logsRoot -ItemType Directory -Force | Out-Null

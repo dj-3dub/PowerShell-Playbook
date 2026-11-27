@@ -47,6 +47,21 @@ jobs:
           Write-Output "PSScriptAnalyzer: $($results.Count) finding(s), $($errors.Count) error(s)."
           if ($errors.Count -gt 0) { exit 1 }
 
+      - name: Check Windows PowerShell 5.1 syntax compatibility
+        run: |
+          # Helpdesk scripts run on stock Windows endpoints, which ship with 5.1.
+          $settings = @{
+            IncludeRules = @('PSUseCompatibleSyntax')
+            Rules        = @{ PSUseCompatibleSyntax = @{ Enable = $true; TargetVersions = @('5.1', '7.4') } }
+          }
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settings
+          foreach ($r in $results) {
+            $file = Resolve-Path -Relative $r.ScriptPath
+            Write-Output "::error file=$file,line=$($r.Line)::$($r.Message)"
+          }
+          Write-Output "Compatibility findings: $($results.Count)"
+          if ($results.Count -gt 0) { exit 1 }
+
       - name: Test (Pester)
         run: |
           $cfg = New-PesterConfiguration

@@ -233,7 +233,7 @@ foreach ($b in $targetBrowsers) {
     }
 
     Write-Host "=== Processing $name ===" -ForegroundColor Cyan
-    Write-Verbose "User data path for $name: $userDataPath"
+    Write-Verbose "User data path for ${name}: $userDataPath"
 
     Stop-BrowserProcess -ProcessNames $processNames
 
