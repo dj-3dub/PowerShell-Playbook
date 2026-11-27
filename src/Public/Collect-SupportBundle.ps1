@@ -16,6 +16,13 @@ function Collect-SupportBundle {
     [string]$OutputPath = "./reports"
   )
 
+  # Relies on Get-Service, CIM/WMI, ipconfig and the Windows event log.
+  # ($IsWindows is undefined on Windows PowerShell 5.1, which only runs on Windows.)
+  if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) {
+    Write-Warning 'Collect-SupportBundle requires Windows; skipping.'
+    return $null
+  }
+
   New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
   $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
   $bundleDir = Join-Path $OutputPath "SupportBundle-$stamp"

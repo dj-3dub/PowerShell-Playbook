@@ -1,33 +1,66 @@
-
 name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-test:
+    name: Lint & test (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
-        pwsh: ['7.4.1']
     runs-on: ${{ matrix.os }}
+
+    # PowerShell 7 is preinstalled on GitHub-hosted runners; no setup action needed.
+    defaults:
+      run:
+        shell: pwsh
+
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PowerShell
-        uses: PowerShell/PowerShell-For-GitHub-Actions@v1
-        with:
-          version: ${{ matrix.pwsh }}
-      - name: Install modules
-        shell: pwsh
+
+      - name: Show PowerShell version
+        run: $PSVersionTable
+
+      - name: Install Pester & PSScriptAnalyzer
         run: |
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module Pester,PSScriptAnalyzer -Scope CurrentUser -Force
-      - name: Lint
-        shell: pwsh
+          Install-Module Pester           -RequiredVersion 6.2.0  -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+
+      - name: Lint (PSScriptAnalyzer)
         run: |
-          Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Warning -ReportSummary
-      - name: Test
-        shell: pwsh
+          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Warning, Error
+          foreach ($r in $results) {
+            $level = if ($r.Severity -eq 'Error') { 'error' } else { 'warning' }
+            $file  = Resolve-Path -Relative $r.ScriptPath
+            Write-Output "::$level file=$file,line=$($r.Line)::[$($r.RuleName)] $($r.Message)"
+          }
+          $errors = @($results | Where-Object Severity -eq 'Error')
+          Write-Output "PSScriptAnalyzer: $($results.Count) finding(s), $($errors.Count) error(s)."
+          if ($errors.Count -gt 0) { exit 1 }
+
+      - name: Test (Pester)
         run: |
-          Invoke-Pester -Path ./tests -CI
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path               = './tests'
+          $cfg.Run.Exit               = $true
+          $cfg.Output.Verbosity       = 'Detailed'
+          $cfg.TestResult.Enabled     = $true
+          $cfg.TestResult.OutputPath  = 'test-results.xml'
+          $cfg.TestResult.OutputFormat = 'NUnitXml'
+          Invoke-Pester -Configuration $cfg
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: test-results.xml
