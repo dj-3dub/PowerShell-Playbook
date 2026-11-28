@@ -84,6 +84,9 @@ Describe 'Get-ToolkitUsageReport' {
         $a.Totals.Runs | Should -BeGreaterThan 50
         $a.Totals.HoursSaved | Should -Be $b.Totals.HoursSaved
         Get-Content $a.Html -Raw | Should -Match '\(sample data\)'
+        # Same numbers in a separate process too (guards against hashtable ordering).
+        $other = pwsh -NoProfile -Command "Import-Module '$(Join-Path $root 'src/PowerShellPlaybook.psd1')' -WarningAction SilentlyContinue; (Get-ToolkitUsageReport -Mock -OutputPath '$(Join-Path $TestDrive 'm3')').Totals.HoursSaved"
+        [double]($other | Select-Object -Last 1) | Should -Be $a.Totals.HoursSaved
     }
 }
 

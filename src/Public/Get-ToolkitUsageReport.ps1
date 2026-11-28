@@ -58,7 +58,8 @@ function Get-ToolkitUsageReport {
     }
 
     if ($Mock) {
-        $runs = New-ToolkitSampleRun -Days 30 -Keys @($manual.Keys)
+        # Sorted: .NET randomises hashtable key order per process, which would make the sample data vary.
+        $runs = New-ToolkitSampleRun -Days 30 -Keys @($manual.Keys | Sort-Object)
     }
     else {
         if (-not (Test-Path $Path)) { throw "Run log not found: $Path. Run scripts/helpdesk/Invoke-HelpdeskToolkit.ps1 to create it." }
@@ -128,7 +129,8 @@ function Get-ToolkitUsageReport {
         'Success rate'  = "$($totals.SuccessRate)%"
         'Hours saved'   = $totals.HoursSaved
     }
-    [IO.File]::WriteAllText("$base.html", (ConvertTo-ReportHtml -Title $title -Data $rows -Meta $meta), [Text.Encoding]::UTF8)
+    $columns = 'Label', 'Runs', 'Succeeded', 'Failed', 'Cancelled', 'SuccessRate', 'AvgSeconds', 'ManualMinutes', 'MinutesSaved', 'Status'
+    [IO.File]::WriteAllText("$base.html", (ConvertTo-ReportHtml -Title $title -Data $rows -Meta $meta -Property $columns), [Text.Encoding]::UTF8)
     Write-Information "Report: $base.html"
 
     [pscustomobject]@{ Rows = $rows; Totals = $totals; Csv = "$base.csv"; Html = "$base.html" }

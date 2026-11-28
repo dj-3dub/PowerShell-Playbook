@@ -44,3 +44,12 @@ Describe 'PowerShellPlaybook module' {
         $exported | Should -Not -Contain 'Invoke-WithRetry'
     }
 }
+
+Describe 'Report style' {
+    It 'is defined once, in src/Shared, for both modules' {
+        $src = Join-Path (Split-Path -Parent $PSScriptRoot) 'src'
+        $withCss = Get-ChildItem $src -Recurse -Include *.ps1, *.psm1 | Where-Object { (Get-Content $_.FullName -Raw) -match '<style' }
+        @($withCss).Count | Should -Be 1
+        $withCss.Directory.Name | Should -Be 'Shared'
+    }
+}

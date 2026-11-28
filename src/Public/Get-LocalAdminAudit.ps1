@@ -196,28 +196,16 @@ function Get-LocalAdminAudit {
 
             $data | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
 
-            $title = "Local Administrators Audit"
-            $pre = "<h2>$title</h2><p>Generated: $(Get-Date)</p>" +
-            "<p>Targets: $([string]::Join(', ', $ComputerName))</p>" +
-            ($(if ($BaselinePath) { "<p>Baseline: $BaselinePath</p>" } else { '' }))
+            $summary = @($data | Group-Object ComputerName, Status | ForEach-Object {
+                    [pscustomobject]@{ ComputerName = $_.Group[0].ComputerName; Status = $_.Group[0].Status; Count = $_.Count }
+                } | Sort-Object ComputerName, Status)
+            $meta = [ordered]@{ Targets = ($ComputerName -join ', ') }
+            if ($BaselinePath) { $meta.Baseline = Split-Path $BaselinePath -Leaf }
 
-            $summary = $data | Group-Object ComputerName, Status | ForEach-Object {
-                [pscustomobject]@{
-                    ComputerName = $_.Group[0].ComputerName
-                    Status       = $_.Group[0].Status
-                    Count        = $_.Count
-                }
-            } | Sort-Object ComputerName, Status
-
-            @(
-                $pre
-                "<h3>Summary</h3>"
-                ($summary | ConvertTo-Html -Fragment)
-                "<h3>Details</h3>"
-                ($data | Sort-Object ComputerName, Status, Member |
-                ConvertTo-Html -Fragment -Property ComputerName, Member, ObjectClass, SID, Status, Source, Reason)
-            ) -join "`n" |
-            ConvertTo-Html -Title $title |
+            ConvertTo-ReportHtml -Title 'Local Administrators Audit' -Meta $meta `
+                -Section ([ordered]@{ 'Summary by computer' = $summary }) `
+                -Data @($data | Sort-Object ComputerName, Status, Member) `
+                -Property ComputerName, Member, ObjectClass, SID, Status, Source, Reason |
             Out-File -Encoding UTF8 $html
 
             Write-Verbose "CSV:  $csv"

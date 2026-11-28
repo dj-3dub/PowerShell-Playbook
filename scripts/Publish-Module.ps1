@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Force -Path $target | Out-Null
 
 Copy-Item -Path (Join-Path $src 'PowerShellPlaybook.psd1') -Destination $target
 Copy-Item -Path (Join-Path $src 'PowerShellPlaybook.psm1') -Destination $target
-foreach ($dir in 'Public', 'Private', 'config') {
+foreach ($dir in 'Public', 'Private', 'Shared', 'config') {
     Copy-Item -Path (Join-Path $src $dir) -Destination $target -Recurse
 }
 
