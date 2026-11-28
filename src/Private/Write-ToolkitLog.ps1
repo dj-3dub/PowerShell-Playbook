@@ -19,8 +19,9 @@ function Write-ToolkitLog {
         data    = $Data
     }
     $dir = Join-Path (Join-Path (Get-Location) 'logs') (Get-Date -Format 'yyyy-MM-dd')
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    $entry | ConvertTo-Json -Depth 5 -Compress | Add-Content -Path (Join-Path $dir 'run.jsonl') -Encoding UTF8
+    # Logging must happen even when the caller runs with -WhatIf.
+    New-Item -ItemType Directory -Force -Path $dir -WhatIf:$false | Out-Null
+    $entry | ConvertTo-Json -Depth 5 -Compress | Add-Content -Path (Join-Path $dir 'run.jsonl') -Encoding UTF8 -WhatIf:$false
 
     switch ($Level) {
         'Error' { Write-Error $Message }

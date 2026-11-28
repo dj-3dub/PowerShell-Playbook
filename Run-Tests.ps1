@@ -61,7 +61,7 @@ if ($analyzer) {
     Write-Host "`nLinting with PSScriptAnalyzer ($($analyzer.Version))..."
     try {
         $settings = Join-Path $root 'PSScriptAnalyzerSettings.psd1'
-        foreach ($dir in 'src', 'scripts') {
+        foreach ($dir in 'src', 'scripts', 'remediations') {
             Invoke-ScriptAnalyzer -Path (Join-Path $root $dir) -Recurse -Settings $settings -ReportSummary
         }
     } catch {

@@ -69,31 +69,25 @@ function Export-SupportBundle {
       # Level 1 = Critical, 2 = Error
       Get-WinEvent -FilterHashtable @{ LogName = $log; Level = 1, 2; StartTime = $since } -ErrorAction SilentlyContinue |
         Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, Message |
-        Export-Csv -Path $t -NoTypeInformation -Encoding UTF8
+        Export-PlaybookCsv -Path $t
     }
   }
 
   Compress-Archive -Path (Join-Path $bundleDir '*') -DestinationPath $zipPath -Force
 
   $os = Get-CimInstance Win32_OperatingSystem
-  $facts = [pscustomobject]@{
-    ComputerName = $env:COMPUTERNAME
-    UserName     = $env:USERNAME
-    OS           = $os.Caption
-    Version      = $os.Version
-    LastBoot     = $os.LastBootUpTime
-    EventWindow  = "$Hours h"
-    BundleDir    = $bundleDir
-    ZipPath      = $zipPath
+  $facts = [ordered]@{
+    Computer    = $env:COMPUTERNAME
+    User        = $env:USERNAME
+    OS          = "$($os.Caption) ($($os.Version))"
+    LastBoot    = $os.LastBootUpTime
+    EventWindow = "$Hours h"
+    Zip         = Split-Path $zipPath -Leaf
   }
-  $files = Get-ChildItem -Path $bundleDir -File | Select-Object Name, Length, LastWriteTime
+  $files = @(Get-ChildItem -Path $bundleDir -File | Select-Object Name, Length, LastWriteTime)
 
-  @(
-    '<h2>Support Bundle Summary</h2>'
-    ($facts | ConvertTo-Html -Fragment -As List)
-    '<h3>Files</h3>'
-    ($files | ConvertTo-Html -Fragment)
-  ) -join "`n" | ConvertTo-Html -Title "Support Bundle $stamp" | Out-File -Encoding UTF8 $htmlPath
+  ConvertTo-ReportHtml -Title "Support Bundle: $env:COMPUTERNAME" -Data $files -Meta $facts |
+    Out-File -Encoding UTF8 $htmlPath
 
   Write-Verbose "Bundle: $bundleDir"
   Write-Verbose "Zip:    $zipPath"

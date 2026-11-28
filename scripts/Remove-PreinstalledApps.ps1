@@ -1,84 +1,96 @@
-[CmdletBinding(SupportsShouldProcess, ConfirmImpact='Medium')]
-param(
-    [string]$PolicyPath = ".\config\debloat-appx.json",
-    [switch]$AllUsers,
-    [string]$ReportPath = ".\reports",
-    [switch]$RemoveProvisioned = $true,
+<#
+.SYNOPSIS
+    Removes preinstalled Windows apps that match a remove-list, never touching anything on the keep-list.
 
-    # NEW: save the report even when running with -WhatIf (Audit mode)
-    [switch]$WriteReport
+.DESCRIPTION
+    Reads a policy file (default: config/debloat-appx.json) with two lists of wildcard patterns:
+      Keep    always kept, even if it also matches Remove (Store, App Installer, runtimes, Company Portal, ...)
+      Remove  removed for the current user (or all users with -AllUsers), and from the provisioned image so
+              new profiles don't get them (skip with -SkipProvisioned)
+
+    Writes an HTML + CSV report of every matching package and its outcome (Planned under -WhatIf, Removed or
+    Failed), even when run with -WhatIf, so the report doubles as an audit.
+
+    -AllUsers and provisioned removal require an elevated session.
+
+.PARAMETER PolicyPath
+    Keep/Remove policy JSON. Default: <repo>/config/debloat-appx.json.
+
+.PARAMETER AllUsers
+    Remove for all user profiles instead of only the current user.
+
+.PARAMETER SkipProvisioned
+    Leave provisioned (image) packages alone.
+
+.PARAMETER ReportPath
+    Folder for the report. Default ./reports.
+
+.EXAMPLE
+    .\Remove-PreinstalledApps.ps1 -WhatIf
+    Audit: report what would be removed.
+
+.EXAMPLE
+    .\Remove-PreinstalledApps.ps1 -AllUsers
+#>
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+param(
+    [string]$PolicyPath = (Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'config') 'debloat-appx.json'),
+    [switch]$AllUsers,
+    [switch]$SkipProvisioned,
+    [string]$ReportPath = './reports'
 )
 
-# Load policy
+$ErrorActionPreference = 'Stop'
+# Report and CSV helpers shared with the modules.
+Get-ChildItem -Path (Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src') 'Shared') -Filter *.ps1 | ForEach-Object { . $_.FullName }
+
 if (-not (Test-Path $PolicyPath)) { throw "Policy file not found: $PolicyPath" }
 $policy = Get-Content $PolicyPath -Raw | ConvertFrom-Json
 $keep = @($policy.Keep)
-$deny = @($policy.Remove)
+$remove = @($policy.Remove)
 
-function Test-AnyMatch($value, $patterns) {
-    foreach ($p in $patterns) { if ($value -like $p) { return $true } }
-    return $false
+function Test-AnyMatch([string]$Value, [string[]]$Patterns) {
+    foreach ($p in $Patterns) { if ($Value -like $p) { return $true } }
+    $false
+}
+function Test-ShouldRemove([string]$Name) {
+    (-not (Test-AnyMatch $Name $keep)) -and (Test-AnyMatch $Name $remove)
 }
 
-Write-Host "Scanning Appx packages..." -ForegroundColor Cyan
+Write-Host 'Scanning Appx packages...' -ForegroundColor Cyan
+$installed = @(Get-AppxPackage -AllUsers:$AllUsers | Where-Object { Test-ShouldRemove $_.Name } | Sort-Object Name)
+$provisioned = @()
+if (-not $SkipProvisioned) {
+    $provisioned = @(Get-AppxProvisionedPackage -Online | Where-Object { Test-ShouldRemove $_.DisplayName } | Sort-Object DisplayName)
+}
+Write-Host ("Matched {0} installed and {1} provisioned package(s)." -f $installed.Count, $provisioned.Count) -ForegroundColor Yellow
 
-$appsCurrent = Get-AppxPackage -AllUsers:$AllUsers | Sort-Object Name
-$prov = if ($RemoveProvisioned) { Get-AppxProvisionedPackage -Online } else { @() }
-
-$toRemoveCurrent = @()
-foreach ($a in $appsCurrent) {
-    if (Test-AnyMatch $a.Name $keep) { continue }
-    if (Test-AnyMatch $a.Name $deny) { $toRemoveCurrent += $a; continue }
+$rows = New-Object System.Collections.Generic.List[object]
+foreach ($a in $installed) {
+    $row = [pscustomobject]@{ Scope = $(if ($AllUsers) { 'All users' } else { 'Current user' }); Package = $a.Name; Version = [string]$a.Version; Status = 'Planned'; Detail = $a.PackageFullName }
+    if ($PSCmdlet.ShouldProcess($a.Name, "Remove-AppxPackage (AllUsers: $AllUsers)")) {
+        try { Remove-AppxPackage -Package $a.PackageFullName -AllUsers:$AllUsers; $row.Status = 'Removed' }
+        catch { $row.Status = 'Failed'; $row.Detail = $_.Exception.Message }
+    }
+    $rows.Add($row)
+}
+foreach ($p in $provisioned) {
+    $row = [pscustomobject]@{ Scope = 'Provisioned'; Package = $p.DisplayName; Version = [string]$p.Version; Status = 'Planned'; Detail = $p.PackageName }
+    if ($PSCmdlet.ShouldProcess($p.DisplayName, 'Remove-AppxProvisionedPackage -Online')) {
+        try { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName | Out-Null; $row.Status = 'Removed' }
+        catch { $row.Status = 'Failed'; $row.Detail = $_.Exception.Message }
+    }
+    $rows.Add($row)
 }
 
-$toRemoveProv = @()
-foreach ($p in $prov) {
-    if (Test-AnyMatch $p.DisplayName $keep) { continue }
-    if (Test-AnyMatch $p.DisplayName $deny) { $toRemoveProv += $p; continue }
-}
-
-Write-Host ("Found {0} current-user app(s) and {1} provisioned app(s) to remove." -f $toRemoveCurrent.Count, $toRemoveProv.Count) -ForegroundColor Yellow
-
-# --- HTML report (force write even under -WhatIf) ---
-function New-ReportHtml($title, $data) {
-@"
-<!DOCTYPE html>
-<html><head><meta charset='utf-8'><title>$title</title>
-<style>
-body{font-family:Segoe UI,Arial,sans-serif;margin:24px}
-table{border-collapse:collapse;width:100%}
-th,td{border:1px solid #ddd;padding:6px;text-align:left}
-th{background:#f4f4f4}
-h1{margin-top:0}
-</style>
-</head><body>
-<h1>$title</h1>
-$data
-</body></html>
-"@
-}
-
-$curRows = $toRemoveCurrent | Select-Object Name, PackageFullName, Publisher, Version | ConvertTo-Html -Fragment
-$provRows = $toRemoveProv   | Select-Object DisplayName, PackageName, Version     | ConvertTo-Html -Fragment
-$report   = New-ReportHtml -title "Debloat Appx Summary ($(Get-Date))" -data ($curRows + $provRows)
-$reportFile = Join-Path $ReportPath ("Debloat-Appx-{0}.html" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
-
-# Force actual write for the report even if -WhatIf was passed
+# The report is an audit record: write it even under -WhatIf.
 New-Item -ItemType Directory -Force -Path $ReportPath -WhatIf:$false -Confirm:$false | Out-Null
-$report | Out-File -FilePath $reportFile -Encoding UTF8 -WhatIf:$false -Confirm:$false
-Write-Host "Report: $reportFile" -ForegroundColor Green
+$base = Join-Path $ReportPath ('Debloat-Appx-{0}' -f (Get-Date -Format 'yyyyMMdd-HHmm'))
+$rows | Export-PlaybookCsv -Path "$base.csv"
+$mode = if ($WhatIfPreference) { 'Audit (WhatIf)' } else { 'Remove' }
+ConvertTo-ReportHtml -Title 'Preinstalled App Removal' -Data $rows.ToArray() `
+    -Meta ([ordered]@{ Mode = $mode; Policy = (Split-Path $PolicyPath -Leaf); Computer = $env:COMPUTERNAME }) |
+    Out-File -FilePath "$base.html" -Encoding UTF8 -WhatIf:$false -Confirm:$false
+Write-Host "Report: $base.html" -ForegroundColor Green
 
-# --- Removals (honor -WhatIf) ---
-foreach ($a in $toRemoveCurrent) {
-    if ($PSCmdlet.ShouldProcess($a.Name, "Remove-AppxPackage -AllUsers:$AllUsers")) {
-        try { Remove-AppxPackage -Package $a.PackageFullName -AllUsers:$AllUsers -ErrorAction Stop }
-        catch { Write-Warning "Failed to remove current package $($a.Name): $($_.Exception.Message)" }
-    }
-}
-
-foreach ($p in $toRemoveProv) {
-    if ($PSCmdlet.ShouldProcess($p.DisplayName, "Remove-AppxProvisionedPackage -Online")) {
-        try { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName -ErrorAction Stop | Out-Null }
-        catch { Write-Warning "Failed to remove provisioned package $($p.DisplayName): $($_.Exception.Message)" }
-    }
-}
+$rows

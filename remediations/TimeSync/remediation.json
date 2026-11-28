@@ -1,0 +1,7 @@
+{
+  "displayName": "PowerShell Playbook - Time sync",
+  "description": "Detects a stopped Windows Time service, no external time source, or clock skew over 60 s, then restores sync (domain hierarchy or NTP) and forces a resync.",
+  "runAsAccount": "system",
+  "runAs32Bit": false,
+  "schedule": "Daily"
+}

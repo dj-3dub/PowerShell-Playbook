@@ -113,13 +113,14 @@ function Invoke-IntuneBaseline {
     }
     $results = @($results)
 
-    New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
+    # The report is read-only output; write it even under -WhatIf (that is when the plan matters most).
+    New-Item -ItemType Directory -Force -Path $OutputPath -WhatIf:$false | Out-Null
     $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
     $title = "Intune Baseline ($Environment)"
     if ($mock) { $title += ' [MOCK]' }
-    $results | Export-Csv -Path (Join-Path $OutputPath "IntuneBaseline-$stamp.csv") -NoTypeInformation -Encoding UTF8
+    $results | Export-PlaybookCsv -Path (Join-Path $OutputPath "IntuneBaseline-$stamp.csv")
     $html = Join-Path $OutputPath "IntuneBaseline-$stamp.html"
-    ConvertTo-ReportHtml -Title $title -Data $results | Out-File -FilePath $html -Encoding UTF8
+    ConvertTo-ReportHtml -Title $title -Data $results | Out-File -FilePath $html -Encoding UTF8 -WhatIf:$false
     Write-Information "Report: $html"
 
     Write-ToolkitLog -Level Info -Message 'Intune baseline complete' -Data @{

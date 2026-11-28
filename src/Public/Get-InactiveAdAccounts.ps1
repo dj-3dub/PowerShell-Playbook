@@ -15,7 +15,7 @@ function Get-InactiveAdAccounts {
     .EXAMPLE
     Get-InactiveAdAccounts -DaysInactive 90 -OutputPath .\reports -Server corp.contoso.com -Credential (Get-Credential)
     #>
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding()]   # read-only report: no -WhatIf
     param(
         [int]$DaysInactive = 90,
         [string]$OutputPath = "./reports",
@@ -64,10 +64,10 @@ function Get-InactiveAdAccounts {
     $csv = Join-Path $OutputPath ("InactiveAccounts-{0}.csv" -f $stamp)
     $html = Join-Path $OutputPath ("InactiveAccounts-{0}.html" -f $stamp)
 
-    $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
-    $rows | ConvertTo-Html -Title "Inactive Accounts (≥ $DaysInactive days)" `
-        -PreContent "<h2>Inactive Accounts</h2><p>Cutoff: $cutoff</p>" `
-        -Property SamAccountName, UPN, DisplayName, LastLogonDate |
+    $rows | Export-PlaybookCsv -Path $csv
+    ConvertTo-ReportHtml -Title "Inactive Accounts ($DaysInactive+ days)" -Data @($rows) `
+        -Property SamAccountName, UPN, DisplayName, LastLogonDate `
+        -Meta ([ordered]@{ Cutoff = $cutoff.ToString('yyyy-MM-dd'); Accounts = @($rows).Count }) |
     Out-File -Encoding UTF8 -FilePath $html
 
     # Return the path for callers/tests

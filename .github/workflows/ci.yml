@@ -37,7 +37,7 @@ jobs:
 
       - name: Lint (PSScriptAnalyzer)
         run: |
-          $results = foreach ($path in './src', './scripts') {
+          $results = foreach ($path in './src', './scripts', './remediations') {
             Invoke-ScriptAnalyzer -Path $path -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
           }
           foreach ($r in $results) {

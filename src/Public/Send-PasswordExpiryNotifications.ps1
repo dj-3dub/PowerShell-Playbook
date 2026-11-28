@@ -81,9 +81,9 @@ Please change it before this date to avoid losing access.
 
     $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
     $html = Join-Path $OutputPath ("PasswordExpiry-{0}.html" -f $stamp)
-    $users | ConvertTo-Html -Title "Password Expiry (≤ $Days days)" `
-        -PreContent "<h2>Password Expiry</h2><p>Deadline: $deadline</p>" `
-        -Property Name, UserPrincipalName, mail, Expires, DaysLeft |
+    ConvertTo-ReportHtml -Title "Password Expiry (within $Days days)" -Data @($users) `
+        -Property Name, UserPrincipalName, mail, Expires, DaysLeft `
+        -Meta ([ordered]@{ Deadline = $deadline.ToString('yyyy-MM-dd'); Users = @($users).Count; Mode = $(if ($Preview) { 'Preview' } else { 'Preview (sending not implemented)' }) }) |
     Out-File -Encoding UTF8 -FilePath $html
 
     return $html

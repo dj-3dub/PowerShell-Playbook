@@ -3,7 +3,7 @@
     RootModule = 'PowerShell-Playbook.Extensions.psm1'
 
     # Version number of this module.
-    ModuleVersion = '0.2.0'
+    ModuleVersion = '0.2.1'
 
     # ID used to uniquely identify this module
     GUID = '3f9b6e2a-7c4d-4f2b-9e1b-2c9a4d5f6e7a'

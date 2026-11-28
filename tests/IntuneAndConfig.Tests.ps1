@@ -23,6 +23,7 @@ Describe 'Invoke-IntuneBaseline' {
     It 'only acts on non-compliant devices with -Enforce, and -WhatIf skips the action' {
         $r = Invoke-IntuneBaseline -Environment Dev -Enforce -WhatIf -OutputPath (Join-Path $TestDrive 'r2')
         ($r | Where-Object DeviceName -eq 'PC-002').Action | Should -Be 'SyncSkipped (WhatIf)'
+        Get-ChildItem (Join-Path $TestDrive 'r2') -Filter 'IntuneBaseline-*.html' | Should -Not -BeNullOrEmpty -Because 'the report is how you review a -WhatIf plan'
         ($r | Where-Object Status -ne 'NonCompliant').Action | Should -Not -Contain 'SyncSkipped (WhatIf)'
     }
 

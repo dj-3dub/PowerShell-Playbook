@@ -21,31 +21,96 @@
      15.  View Network Performance Logs
      16.  Identity: Sign-in health triage
      17.  Identity: Unlock AD account
-     18.  Identity: Force AD password reset
+     18.  Identity: Reset AD password
       Q.  Quit
+
+.NOTES
+    Every fix run is recorded as one JSON line in out/HelpdeskLogs/toolkit-runs.jsonl (fix, ticket,
+    technician, duration, outcome). Get-ToolkitUsageReport turns that into success rates and time saved.
+
+.PARAMETER RunLogPath
+    Where to write run records. Default: <repo>/out/HelpdeskLogs/toolkit-runs.jsonl.
 
 .EXAMPLE
     .\Invoke-HelpdeskToolkit.ps1
 #>
 
 [CmdletBinding()]
-param()
+param(
+    # JSON Lines file that receives one record per fix run (read by Get-ToolkitUsageReport).
+    [string]$RunLogPath
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Resolve the folder that contains the helpdesk scripts
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+$repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
+if (-not $RunLogPath) {
+    $RunLogPath = Join-Path (Join-Path (Join-Path $repoRoot 'out') 'HelpdeskLogs') 'toolkit-runs.jsonl'
+}
+$script:SessionTicket = $null
+$script:TicketAsked   = $false
+$script:RunCancelled  = $false
+
+function Get-TicketId {
+    # Asked once per session (at start-up); every fix and run record reuses it.
+    if (-not $script:TicketAsked) {
+        $script:SessionTicket = ([string](Read-Host 'Ticket ID for this session (optional, Enter to skip)')).Trim()
+        $script:TicketAsked = $true
+    }
+    $script:SessionTicket
+}
+
+function Write-RunRecord {
+    param([System.Collections.IDictionary]$Record)
+    $dir = Split-Path -Path $RunLogPath -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    ([pscustomobject]$Record | ConvertTo-Json -Compress) | Add-Content -Path $RunLogPath -Encoding UTF8
+}
+
+function Invoke-TrackedAction {
+    <#
+        Runs one menu action and appends a run record: what ran, for which ticket, by whom, how long it took,
+        and whether it succeeded (no exception and a zero exit code), failed, or was cancelled by the technician.
+    #>
+    param([string]$Key, [string]$Label, [scriptblock]$Action)
+    $script:RunCancelled = $false
+    $global:LASTEXITCODE = 0
+    $errorText = $null
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    try { & $Action }
+    catch { $errorText = $_.Exception.Message; Write-Host "Failed: $errorText" -ForegroundColor Red }
+    $sw.Stop()
+
+    $outcome = if ($errorText -or $LASTEXITCODE -ne 0) { 'Failed' } elseif ($script:RunCancelled) { 'Cancelled' } else { 'Success' }
+    try {
+        Write-RunRecord ([ordered]@{
+            Timestamp       = (Get-Date).ToString('o')
+            Fix             = $Key
+            Label           = $Label
+            TicketId        = $script:SessionTicket
+            Computer        = [Environment]::MachineName
+            Operator        = [Environment]::UserName
+            DurationSeconds = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+            Outcome         = $outcome
+            ExitCode        = $LASTEXITCODE
+            Error           = $errorText
+        })
+    }
+    catch { Write-Warning "Could not write run record: $($_.Exception.Message)" }
+}
 
 function Invoke-ResetPrinter {
     $script = Join-Path $scriptDir 'Reset-PrinterSubsystem.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
     & $script -Verbose
 }
 
 function Invoke-ResetTeams {
     $script = Join-Path $scriptDir 'Reset-TeamsCache.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $restart = Read-Host "Restart Teams after clearing cache? (Y/N)"
     $restartSwitch = ($restart -match '^[Yy]')
@@ -56,31 +121,31 @@ function Invoke-ResetTeams {
 
 function Invoke-ResetOutlook {
     $script = Join-Path $scriptDir 'Reset-OutlookProfile.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $confirm = Read-Host "This will reset the Outlook profile. Continue? (Y/N)"
-    if ($confirm -notmatch '^[Yy]') { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+    if ($confirm -notmatch '^[Yy]') { Write-Host "Cancelled." -ForegroundColor Yellow; $script:RunCancelled = $true; return }
 
     & $script -Verbose
 }
 
 function Invoke-RepairNetwork {
     $script = Join-Path $scriptDir 'Repair-NetworkStack.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
     & $script -Verbose
 }
 
 function Invoke-RepairWindowsUpdate {
     $script = Join-Path $scriptDir 'Repair-WindowsUpdate.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
     & $script -Verbose
 }
 
 function Invoke-CollectHelpdeskLogs {
     $script = Join-Path $scriptDir 'Export-HelpdeskLogs.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
-    $ticket = Read-Host "Enter Ticket ID (optional)"
+    $ticket = Get-TicketId
     $hoursInput = Read-Host "Hours of event logs to collect? (default 24)"
     $hours = if ($hoursInput -match '^\d+$') { [int]$hoursInput } else { 24 }
 
@@ -94,7 +159,7 @@ function Invoke-CollectHelpdeskLogs {
 
 function Invoke-ResetBrowser {
     $script = Join-Path $scriptDir 'Reset-BrowserProfile.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $browser = Read-Host "Browser (Chrome/Edge/All, default All)"
     if (-not $browser) { $browser = "All" }
@@ -118,7 +183,7 @@ function Invoke-ResetBrowser {
 
 function Invoke-MailboxCapacityCheck {
     $script = Join-Path $scriptDir 'Test-MailboxCapacityAndRetention.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     Write-Host "NOTE: Must be connected to Exchange Online first." -ForegroundColor Yellow
 
@@ -140,7 +205,7 @@ function Invoke-MailboxCapacityCheck {
     }
     else {
         $id = Read-Host "Enter mailbox identity"
-        if (-not $id) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+        if (-not $id) { Write-Host "Cancelled." -ForegroundColor Yellow; $script:RunCancelled = $true; return }
         $params.Identity = $id
     }
 
@@ -151,7 +216,7 @@ function Invoke-MailboxCapacityCheck {
 
 function Invoke-OneDriveRepair {
     $script = Join-Path $scriptDir 'Repair-OneDriveSync.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $mode = Read-Host "Mode: Soft or Reset (S/R, default R)"
     $mode = if ($mode -match '^[Ss]') { 'Soft' } else { 'Reset' }
@@ -171,7 +236,7 @@ function Invoke-OneDriveRepair {
 
 function Invoke-VpnDiagnostics {
     $script = Join-Path $scriptDir 'Test-VpnDiagnostics.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $vpnName  = Read-Host "VPN name (optional)"
     $internal = Read-Host "Internal test host (optional)"
@@ -193,7 +258,7 @@ function Invoke-VpnDiagnostics {
 
 function Invoke-BitLockerHealth {
     $script = Join-Path $scriptDir 'Test-BitLockerHealth.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $export = -not ((Read-Host "Export CSV? (Y/N, default Y)") -match '^[Nn]')
     $include = ((Read-Host "Include Recovery Keys? (Sensitive!) (Y/N)") -match '^[Yy]')
@@ -209,7 +274,7 @@ function Invoke-BitLockerHealth {
 
 function Invoke-OutlookOstRepair {
     $script = Join-Path $scriptDir 'Repair-OutlookOst.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $identity = Read-Host "Filter OSTs by identity (optional)"
     $modeInput = Read-Host "Mode: Rebuild (R), Scan (S), Both (B)"
@@ -233,7 +298,7 @@ function Invoke-OutlookOstRepair {
 
 function Invoke-PreflightChecks {
     $script = Join-Path $scriptDir 'Test-EndpointPreflight.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $hoursInput = Read-Host "Hours of event logs (default 4)"
     $hours = if ($hoursInput -match '^\d+$') { [int]$hoursInput } else { 4 }
@@ -253,9 +318,9 @@ function Invoke-PreflightChecks {
 
 function Invoke-NetworkPerformance {
     $script = Join-Path $scriptDir 'Test-NetworkPerformance.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
-    $ticket = Read-Host "Ticket ID (optional)"
+    $ticket = Get-TicketId
     $remed  = Read-Host "Run safe remediation (DNS flush) if suggested? (Y/N, default N)"
 
     $params = @{ Verbose = $true }
@@ -289,7 +354,7 @@ function Invoke-ViewNetworkPerformanceLogs {
     }
 
     $idx = Read-Host "Select log number to view (Enter to cancel)"
-    if ([string]::IsNullOrWhiteSpace($idx)) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
+    if ([string]::IsNullOrWhiteSpace($idx)) { Write-Host "Cancelled." -ForegroundColor Yellow; $script:RunCancelled = $true; return }
     if ($idx -notmatch '^\d+$') { Write-Host "Invalid selection." -ForegroundColor Yellow; return }
     $n = [int]$idx
     if ($n -lt 0 -or $n -ge $logs.Count) { Write-Host "Invalid selection." -ForegroundColor Yellow; return }
@@ -304,11 +369,11 @@ function Invoke-ViewNetworkPerformanceLogs {
 
 function Invoke-IdentitySignInHealth {
     $script = Join-Path $scriptDir 'Test-UserSignInHealth.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $user = Read-Host "Enter username or UPN (default current user)"
     if (-not $user) { $user = $env:USERNAME }
-    $ticket = Read-Host "Ticket ID (optional)"
+    $ticket = Get-TicketId
 
     $params = @{ Identity = $user; Verbose = $true }
     if ($ticket) { $params.TicketId = $ticket }
@@ -318,11 +383,11 @@ function Invoke-IdentitySignInHealth {
 
 function Invoke-UnlockAdAccount {
     $script = Join-Path $scriptDir 'Unlock-UserAccount.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $user = Read-Host "Enter AD username/UPN to unlock"
-    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
-    $ticket = Read-Host "Ticket ID (optional)"
+    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; $script:RunCancelled = $true; return }
+    $ticket = Get-TicketId
 
     $params = @{ Identity = $user; Verbose = $true }
     if ($ticket) { $params.TicketId = $ticket }
@@ -332,11 +397,11 @@ function Invoke-UnlockAdAccount {
 
 function Invoke-ForceAdPasswordReset {
     $script = Join-Path $scriptDir 'Reset-UserPassword.ps1'
-    if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
+    if (-not (Test-Path $script)) { throw "Missing script: $script" }
 
     $user = Read-Host "Enter AD username/UPN to reset password"
-    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; return }
-    $ticket = Read-Host "Ticket ID (optional)"
+    if (-not $user) { Write-Host "Cancelled." -ForegroundColor Yellow; $script:RunCancelled = $true; return }
+    $ticket = Get-TicketId
 
     $params = @{ Identity = $user; Verbose = $true }
     if ($ticket) { $params.TicketId = $ticket }
@@ -344,62 +409,57 @@ function Invoke-ForceAdPasswordReset {
     & $script @params
 }
 
+# One table drives both the menu and dispatch. Key is the stable name used in run records and baselines.
+$menu = [ordered]@{
+    '1'  = @{ Key = 'ResetPrinter';        Label = 'Reset printer subsystem';               Run = { Invoke-ResetPrinter } }
+    '2'  = @{ Key = 'ResetTeams';          Label = 'Reset Microsoft Teams cache';           Run = { Invoke-ResetTeams } }
+    '3'  = @{ Key = 'ResetOutlook';        Label = 'Reset Outlook profile';                 Run = { Invoke-ResetOutlook } }
+    '4'  = @{ Key = 'RepairNetwork';       Label = 'Repair network stack (DNS/Winsock/IP)'; Run = { Invoke-RepairNetwork } }
+    '5'  = @{ Key = 'RepairWindowsUpdate'; Label = 'Repair Windows Update components';      Run = { Invoke-RepairWindowsUpdate } }
+    '6'  = @{ Key = 'CollectLogs';         Label = 'Collect helpdesk logs (ZIP)';           Run = { Invoke-CollectHelpdeskLogs } }
+    '7'  = @{ Key = 'ResetBrowser';        Label = 'Reset browser profiles (Chrome/Edge)';  Run = { Invoke-ResetBrowser } }
+    '8'  = @{ Key = 'MailboxCapacity';     Label = 'Check mailbox capacity & retention';    Run = { Invoke-MailboxCapacityCheck } }
+    '9'  = @{ Key = 'OneDriveRepair';      Label = 'Repair OneDrive sync';                  Run = { Invoke-OneDriveRepair } }
+    '10' = @{ Key = 'VpnDiagnostics';      Label = 'VPN diagnostics';                       Run = { Invoke-VpnDiagnostics } }
+    '11' = @{ Key = 'BitLockerHealth';     Label = 'BitLocker health check';                Run = { Invoke-BitLockerHealth } }
+    '12' = @{ Key = 'OutlookOstRepair';    Label = 'Outlook OST repair';                    Run = { Invoke-OutlookOstRepair } }
+    '13' = @{ Key = 'PreflightChecks';     Label = 'Endpoint pre-flight checks';            Run = { Invoke-PreflightChecks } }
+    '14' = @{ Key = 'NetworkPerformance';  Label = 'Network performance diagnostics';       Run = { Invoke-NetworkPerformance } }
+    '15' = @{ Key = $null;                 Label = 'View network performance logs';         Run = { Invoke-ViewNetworkPerformanceLogs } }
+    '16' = @{ Key = 'SignInHealth';        Label = 'Identity: Sign-in health triage';       Run = { Invoke-IdentitySignInHealth } }
+    '17' = @{ Key = 'UnlockAccount';       Label = 'Identity: Unlock AD account';           Run = { Invoke-UnlockAdAccount } }
+    '18' = @{ Key = 'PasswordReset';       Label = 'Identity: Reset AD password';           Run = { Invoke-ForceAdPasswordReset } }
+}
+
 function Show-Menu {
     Clear-Host
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host "   Helpdesk Automation Toolkit (PowerShell)"
     Write-Host "==========================================" -ForegroundColor Cyan
+    if ($script:SessionTicket) { Write-Host "   Ticket: $script:SessionTicket" -ForegroundColor DarkGray }
     Write-Host ""
-    Write-Host " 1)  Reset printer subsystem"
-    Write-Host " 2)  Reset Microsoft Teams cache"
-    Write-Host " 3)  Reset Outlook profile"
-    Write-Host " 4)  Repair network stack (DNS/Winsock/IP)"
-    Write-Host " 5)  Repair Windows Update components"
-    Write-Host " 6)  Collect helpdesk logs (ZIP)"
-    Write-Host " 7)  Reset browser profiles (Chrome/Edge)"
-    Write-Host " 8)  Check mailbox capacity & retention"
-    Write-Host " 9)  Repair OneDrive sync"
-    Write-Host "10)  VPN diagnostics"
-    Write-Host "11)  BitLocker health check"
-    Write-Host "12)  Outlook OST repair"
-    Write-Host "13)  Endpoint pre-flight checks"
-    Write-Host "14)  Network performance diagnostics"
-    Write-Host "15)  View Network Performance Logs"
-    Write-Host "16)  Identity: Sign-in health triage"
-    Write-Host "17)  Identity: Unlock AD account"
-    Write-Host "18)  Identity: Force AD password reset"
+    foreach ($k in $menu.Keys) { Write-Host ("{0,2})  {1}" -f $k, $menu[$k].Label) }
     Write-Host " Q)  Quit"
     Write-Host ""
 }
 
+$null = Get-TicketId
+
 do {
     Show-Menu
-    $choice = Read-Host "Select an option"
+    $choice = (Read-Host "Select an option").Trim().ToUpper()
 
-    switch ($choice.ToUpper()) {
-        '1'  { Invoke-ResetPrinter                ; Pause }
-        '2'  { Invoke-ResetTeams                  ; Pause }
-        '3'  { Invoke-ResetOutlook                ; Pause }
-        '4'  { Invoke-RepairNetwork               ; Pause }
-        '5'  { Invoke-RepairWindowsUpdate         ; Pause }
-        '6'  { Invoke-CollectHelpdeskLogs         ; Pause }
-        '7'  { Invoke-ResetBrowser                ; Pause }
-        '8'  { Invoke-MailboxCapacityCheck        ; Pause }
-        '9'  { Invoke-OneDriveRepair              ; Pause }
-        '10' { Invoke-VpnDiagnostics              ; Pause }
-        '11' { Invoke-BitLockerHealth             ; Pause }
-        '12' { Invoke-OutlookOstRepair            ; Pause }
-        '13' { Invoke-PreflightChecks             ; Pause }
-        '14' { Invoke-NetworkPerformance          ; Pause }
-        '15' { Invoke-ViewNetworkPerformanceLogs  ; Pause }
-        '16' { Invoke-IdentitySignInHealth        ; Pause }
-        '17' { Invoke-UnlockAdAccount             ; Pause }
-        '18' { Invoke-ForceAdPasswordReset        ; Pause }
-        'Q'  { Write-Host "Exiting Helpdesk Toolkit." -ForegroundColor Green }
-        default {
-            Write-Host "Invalid selection. Choose 1-18 or Q." -ForegroundColor Yellow
-            Pause
-        }
+    if ($choice -eq 'Q') {
+        Write-Host "Exiting Helpdesk Toolkit." -ForegroundColor Green
     }
-
-} while ($choice.ToUpper() -ne 'Q')
+    elseif ($menu.Contains($choice)) {
+        $item = $menu[$choice]
+        if ($item.Key) { Invoke-TrackedAction -Key $item.Key -Label $item.Label -Action $item.Run }
+        else { & $item.Run }
+        Pause
+    }
+    else {
+        Write-Host "Invalid selection. Choose 1-$($menu.Count) or Q." -ForegroundColor Yellow
+        Pause
+    }
+} while ($choice -ne 'Q')

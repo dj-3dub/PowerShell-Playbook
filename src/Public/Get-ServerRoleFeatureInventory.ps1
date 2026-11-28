@@ -144,15 +144,12 @@ function Get-ServerRoleFeatureInventory {
             $csv = Join-Path $OutputPath "ServerRoles-$stamp.csv"
             $html = Join-Path $OutputPath "ServerRoles-$stamp.html"
 
-            $objects | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
+            $objects | Export-PlaybookCsv -Path $csv
 
-            $title = 'Server Role/Feature Inventory'
-            $pre = "<h2>$title</h2><p>Generated: $(Get-Date)</p>"
-
-            $objects |
-            Sort-Object -Property ComputerName, Installed, DisplayName -Descending |
-            ConvertTo-Html -Title $title -PreContent $pre `
-                -Property ComputerName, Source, DisplayName, Name, Installed, FeatureType, Parent, DependsOn, Note |
+            $sorted = @($objects | Sort-Object -Property ComputerName, Installed, DisplayName -Descending)
+            ConvertTo-ReportHtml -Title 'Server Role/Feature Inventory' -Data $sorted `
+                -Property ComputerName, Source, DisplayName, Name, Installed, FeatureType, Parent, DependsOn, Note `
+                -Meta ([ordered]@{ Servers = ($ComputerName -join ', '); InstalledOnly = [bool]$InstalledOnly }) |
             Out-File -Encoding UTF8 $html
 
             Write-Verbose "CSV:  $csv"

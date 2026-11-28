@@ -1,71 +1,94 @@
-[CmdletBinding(SupportsShouldProcess)]
+<#
+.SYNOPSIS
+    Runs the Windows 11 clean-up in one step: preinstalled app removal, consumer experience policies,
+    and enterprise defaults. Audits by default.
+
+.DESCRIPTION
+    -Mode Audit (default)   Runs every step with -WhatIf and writes the app report, so you see exactly what
+                            Remove would change. Works without elevation (scoped to the current user).
+    -Mode Remove            Applies the changes. -AllUsers and provisioned-app removal need an elevated session.
+
+    Steps (skip any with the -Skip* switches):
+      1. Remove-PreinstalledApps.ps1   apps matched by config/debloat-appx.json
+      2. Set-ConsumerExperience.ps1    suggested apps, Spotlight, tips, widgets news
+      3. Set-EnterpriseDefaults.ps1    Remote Assistance, Xbox services, telemetry level
+
+    For managed devices, prefer Intune/Group Policy for steps 2 and 3. This script suits standalone builds,
+    labs and machines outside management.
+
+.PARAMETER Mode
+    Audit (default) or Remove.
+
+.PARAMETER PolicyPath
+    Keep/Remove policy for step 1. Default: <repo>/config/debloat-appx.json.
+
+.PARAMETER AllUsers
+    Step 1 removes apps for all users (elevation required).
+
+.PARAMETER SkipProvisioned
+    Step 1 leaves provisioned (image) packages alone.
+
+.PARAMETER SkipApps
+    Skip step 1.
+
+.PARAMETER SkipConsumerExperience
+    Skip step 2.
+
+.PARAMETER SkipEnterpriseDefaults
+    Skip step 3.
+
+.EXAMPLE
+    .\Invoke-Win11Debloat.ps1
+    Audit everything and write the report.
+
+.EXAMPLE
+    .\Invoke-Win11Debloat.ps1 -Mode Remove -AllUsers -SkipEnterpriseDefaults
+#>
+[CmdletBinding()]
 param(
-    [ValidateSet('Audit','Remove')][string]$Mode = 'Audit',
-    [string]$PolicyPath = ".\config\debloat-appx.json",
+    [ValidateSet('Audit', 'Remove')][string]$Mode = 'Audit',
+    [string]$PolicyPath = (Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'config') 'debloat-appx.json'),
     [switch]$AllUsers,
-    [switch]$RemoveProvisioned = $true,
-    [switch]$NoConsumerTweaks,
-    [switch]$NoEnterpriseDefaults
+    [switch]$SkipProvisioned,
+    [switch]$SkipApps,
+    [switch]$SkipConsumerExperience,
+    [switch]$SkipEnterpriseDefaults
 )
 
-function Test-IsAdmin {
-    try {
-        $id = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $p  = New-Object Security.Principal.WindowsPrincipal($id)
-        return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    } catch { return $false }
+$ErrorActionPreference = 'Stop'
+
+$isAdmin = $false
+try {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
+catch { Write-Verbose "Elevation check unavailable: $($_.Exception.Message)" }
 
-$IsAdmin = Test-IsAdmin
+$audit = ($Mode -eq 'Audit')
+Write-Host '=== Windows 11 clean-up ===' -ForegroundColor Cyan
+Write-Host "Mode: $Mode | AllUsers: $AllUsers | Provisioned: $(-not $SkipProvisioned) | Elevated: $isAdmin" -ForegroundColor Gray
 
-Write-Host "=== Enterprise Debloat Orchestrator ===" -ForegroundColor Cyan
-Write-Host "Mode: $Mode  | AllUsers: $AllUsers  | RemoveProvisioned: $RemoveProvisioned  | Admin: $IsAdmin" -ForegroundColor Gray
-
-# ---- Preflight: make Audit mode painless; keep Remove mode safe ----
-if ($Mode -eq 'Audit') {
-    if (-not $IsAdmin) {
-        # Auto-scope to current user & skip provisioned when not elevated
-        if ($AllUsers.IsPresent) {
-            Write-Host "Preflight: Not elevated → forcing -AllUsers:$false for Audit." -ForegroundColor Yellow
-        }
-        if ($RemoveProvisioned.IsPresent) {
-            Write-Host "Preflight: Not elevated → forcing -RemoveProvisioned:$false for Audit." -ForegroundColor Yellow
-        }
+if (-not $isAdmin) {
+    if ($audit) {
+        # An unelevated audit can only see the current user's apps.
+        if ($AllUsers -or -not $SkipProvisioned) { Write-Host 'Not elevated: auditing current-user apps only.' -ForegroundColor Yellow }
         $AllUsers = $false
-        $RemoveProvisioned = $false
+        $SkipProvisioned = $true
     }
-} else {
-    # Remove mode: require elevation for cross-user and provisioned actions
-    if (($AllUsers -or $RemoveProvisioned) -and -not $IsAdmin) {
-        Write-Warning "Remove mode with -AllUsers or -RemoveProvisioned requires **Run as Administrator**. Aborting."
-        return
+    else {
+        throw 'Remove mode changes machine-wide settings; run it from an elevated session.'
     }
 }
 
-# Shared args
-$debloatArgs = @{
-    PolicyPath        = $PolicyPath
-    AllUsers          = $AllUsers
-    ReportPath        = ".\reports"
-    RemoveProvisioned = $RemoveProvisioned
+if (-not $SkipApps) {
+    & (Join-Path $PSScriptRoot 'Remove-PreinstalledApps.ps1') -PolicyPath $PolicyPath -AllUsers:$AllUsers `
+        -SkipProvisioned:$SkipProvisioned -WhatIf:$audit | Out-Null
+}
+if (-not $SkipConsumerExperience) {
+    & (Join-Path $PSScriptRoot 'Set-ConsumerExperience.ps1') -WhatIf:$audit
+}
+if (-not $SkipEnterpriseDefaults) {
+    & (Join-Path $PSScriptRoot 'Set-EnterpriseDefaults.ps1') -WhatIf:$audit
 }
 
-# Run remover (Audit writes report for real; removals still WhatIf)
-if ($Mode -eq 'Audit') {
-    & "$PSScriptRoot\Remove-PreinstalledApps.ps1" @debloatArgs -WhatIf -WriteReport
-} else {
-    & "$PSScriptRoot\Remove-PreinstalledApps.ps1" @debloatArgs
-}
-
-# In Audit mode, forward -WhatIf to tweaks so no changes occur
-$whatIf = ($Mode -eq 'Audit')
-
-if (-not $NoConsumerTweaks) {
-    & "$PSScriptRoot\Set-ConsumerExperience.ps1" -Disable -WhatIf:$whatIf
-}
-
-if (-not $NoEnterpriseDefaults) {
-    & "$PSScriptRoot\Set-EnterpriseDefaults.ps1" -WhatIf:$whatIf
-}
-
-Write-Host "Done. See reports folder for HTML summary (if any)." -ForegroundColor Green
+Write-Host 'Done. See ./reports for the app removal report.' -ForegroundColor Green

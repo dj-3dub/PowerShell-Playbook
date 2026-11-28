@@ -23,6 +23,9 @@
 
 Set-StrictMode -Version Latest
 
+# Report and CSV helpers shared with the PowerShellPlaybook module.
+Get-ChildItem -Path (Join-Path $PSScriptRoot 'Shared') -Filter *.ps1 | ForEach-Object { . $_.FullName }
+
 # -----------------------------------------------------------------------------
 # Config (override in session: $m = Get-Module PowerShell-Playbook.Extensions; & $m { $script:PlaybookConfig.OutputRoot = 'D:\Reports' })
 # -----------------------------------------------------------------------------
@@ -78,10 +81,7 @@ function Complete-PlaybookRun {
   if ($Mock) { $Title = "$Title (sample data)" }
   $csv  = Join-Path $OutDir "$Name.csv"
   $html = Join-Path $OutDir "$Name.html"
-  # -NoTypeInformation is required on 5.1 and obsolete (warns) on 7.x.
-  $csvArgs = @{ Path = $csv; Encoding = 'UTF8' }
-  if ($PSVersionTable.PSVersion.Major -lt 6) { $csvArgs.NoTypeInformation = $true }
-  $Rows | Export-Csv @csvArgs
+  $Rows | Export-PlaybookCsv -Path $csv
   New-PlaybookReport -Title $Title -Data $Rows -Meta $Meta -OutFile $html | Out-Null
   [pscustomobject]@{ Csv = $csv; Html = $html; Rows = $Rows }
 }
@@ -98,11 +98,14 @@ function Get-ThresholdStatus {
 function New-PlaybookReport {
   <#
   .SYNOPSIS
-    Build a consistent HTML report: title, metadata chips, a summary of Status counts, and a table.
+    Write a PowerShell Playbook HTML report: title, metadata chips, a status summary, and a colour-coded table.
+  .DESCRIPTION
+    Uses the report builder shared with the PowerShellPlaybook module, so every report from either module
+    looks the same. A 'Status' column with OK / Warn / Fail / NotConnected (and similar) values is colour-coded.
   .PARAMETER Title
     Report title.
   .PARAMETER Data
-    Objects to render as a table. A 'Status' column with OK/Warn/Fail/NotConnected values is colour-coded.
+    Objects to render as a table.
   .PARAMETER Meta
     Hashtable of key/value metadata shown under the title.
   .PARAMETER OutFile
@@ -117,71 +120,13 @@ function New-PlaybookReport {
     [hashtable] $Meta,
     [Parameter(Mandatory)] [string] $OutFile
   )
-  $enc = { param($s) [System.Net.WebUtility]::HtmlEncode([string]$s) }
-
-  $style = @'
-<style>
-  :root { --fg:#1f2328; --muted:#656d76; --line:#d0d7de; --head:#f6f8fa;
-          --ok:#1a7f37; --ok-bg:#dafbe1; --warn:#9a6700; --warn-bg:#fff8c5;
-          --fail:#cf222e; --fail-bg:#ffebe9; --info:#0969da; --info-bg:#ddf4ff; }
-  body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--fg); margin: 32px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .subtle { color: var(--muted); font-size: 12px; }
-  .chips { margin: 14px 0 6px; }
-  .chip { display: inline-block; padding: 4px 10px; margin: 0 6px 6px 0; border: 1px solid var(--line);
-          border-radius: 999px; font-size: 12px; background: #fff; }
-  .chip b { font-weight: 600; }
-  .summary .chip.ok   { color: var(--ok);   background: var(--ok-bg);   border-color: transparent; }
-  .summary .chip.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
-  .summary .chip.fail { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
-  .summary .chip.info { color: var(--info); background: var(--info-bg); border-color: transparent; }
-  table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 13px; }
-  th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
-  th { background: var(--head); font-weight: 600; border-top: 1px solid var(--line); }
-  tr:hover td { background: #fafbfc; }
-  td.status { font-weight: 600; white-space: nowrap; }
-  td.ok { color: var(--ok); } td.warn { color: var(--warn); } td.fail { color: var(--fail); } td.info { color: var(--info); }
-  .footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
-</style>
-'@
-
-  $rows = @($Data)
-
-  $metaHtml = ''
+  $ordered = $null
   if ($Meta) {
-    $metaHtml = ($Meta.GetEnumerator() | Sort-Object Key | ForEach-Object {
-        "<span class='chip'><b>$(& $enc $_.Key):</b> $(& $enc $_.Value)</span>"
-      }) -join "`n"
+    $ordered = [ordered]@{}
+    foreach ($k in ($Meta.Keys | Sort-Object)) { $ordered[$k] = $Meta[$k] }
   }
-
-  $summaryHtml = ''
-  if ($rows.Count -and $rows[0].PSObject.Properties['Status']) {
-    $order = @{ OK = 0; Warn = 1; Fail = 2; Info = 3; NotConnected = 4 }
-    $summaryHtml = ($rows | Group-Object Status | Sort-Object { if ($order.ContainsKey($_.Name)) { $order[$_.Name] } else { 9 } } | ForEach-Object {
-        $cls = switch ($_.Name) { 'OK' { 'ok' } 'Warn' { 'warn' } 'Fail' { 'fail' } default { 'info' } }
-        "<span class='chip $cls'>$(& $enc $_.Name): $($_.Count)</span>"
-      }) -join "`n"
-  }
-
-  $table = ($rows | ConvertTo-Html -Fragment) -join "`n"
-  # Colour-code Status cells (ConvertTo-Html already HTML-encodes cell values).
-  $table = [regex]::Replace($table, '<td>(OK|Warn|Fail|NotConnected|Info)</td>', {
-      param($m)
-      $cls = switch ($m.Groups[1].Value) { 'OK' { 'ok' } 'Warn' { 'warn' } 'Fail' { 'fail' } default { 'info' } }
-      "<td class=""status $cls"">$($m.Groups[1].Value)</td>"
-    })
-
-  $generated = Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
-  $body = @"
-<h1>$(& $enc $Title)</h1>
-<div class='subtle'>Generated $generated on $(& $enc ([Environment]::MachineName))</div>
-<div class='chips'>$metaHtml</div>
-<div class='chips summary'>$summaryHtml</div>
-$table
-<div class='footer'>PowerShell Playbook &middot; github.com/dj-3dub/PowerShell-Playbook</div>
-"@
-
-  ConvertTo-Html -Head $style -Body $body -Title $Title | Out-File -Encoding UTF8 -FilePath $OutFile
+  $html = ConvertTo-ReportHtml -Title $Title -Data $Data -Meta $ordered
+  [IO.File]::WriteAllText($OutFile, $html, [Text.Encoding]::UTF8)
   $OutFile
 }
 

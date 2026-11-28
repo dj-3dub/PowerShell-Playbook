@@ -4,7 +4,26 @@ All notable changes to PowerShell Playbook are documented here. Versions refer t
 
 ---
 
-## [Unreleased] (0.3.0)
+## [Unreleased] (0.4.0)
+
+### Added
+- **Offboarding:** `Invoke-UserOffboarding` takes a JSON snapshot, then runs the security steps first (disable, random password, revoke Entra sessions), then clean-up (description, groups, disabled OU) and hand-over (shared mailbox, auto-reply, hide from address book, mailbox/OneDrive delegation to the manager). `Undo-UserOffboarding` restores from the snapshot. Every step supports `-WhatIf`; missing cloud sessions are Skipped; failures are recorded without stopping the run.
+- **Intune Remediations** (`remediations/`): `LowDiskSpace`, `TeamsCacheSize`, `TimeSync`, `StaleWindowsUpdate` detect/remediate pairs, plus `Publish-IntuneRemediation.ps1` (Graph, create-or-update by name, optional daily group assignment).
+- **Usage metrics:** the Helpdesk Toolkit logs every fix run (fix, ticket, technician, duration, outcome) to `out/HelpdeskLogs/toolkit-runs.jsonl`. `Get-ToolkitUsageReport` reports success rate per fix and hours saved against `src/config/helpdesk-baselines.json`; `-Mock` gives deterministic sample data.
+- Demo GIF and toolkit usage screenshot in the README.
+
+### Changed
+- **One report style:** `src/Shared/ConvertTo-ReportHtml.ps1` is the only report builder, used by both modules and the app-removal script. Certificate and Defender reports gain a Status column. `Export-PlaybookCsv` writes CSVs on 5.1 and 7 without warnings.
+- **Helpdesk Toolkit menu:** table-driven. Asks for the ticket once per session. A missing fix script counts as a failure.
+- **Windows 11 hardening scripts:** full help; `-Setting`/`-Revert`/`-SkipProvisioned`/`-Skip*` replace switches that defaulted to `$true`; `-Revert` removes policy values instead of writing the opposite value; the app-removal report records each package's outcome and is written even under `-WhatIf`.
+
+### Fixed
+- `Invoke-IntuneBaseline -WhatIf` wrote no report.
+- `Remove-PreinstalledApps` had a no-op `-WriteReport` switch, and resolved its policy file relative to the current directory.
+
+---
+
+## [0.3.0] - 2026-11-27
 
 ### Changed
 - **Extensions module** no longer returns placeholder numbers. Each report function queries the live system through the vendor module's session, returns a `NotConnected` row with guidance when it can't, or returns labelled sample data with `-Mock`. Rows are graded OK / Warn / Fail; HTML reports are colour-coded and HTML-encoded. Removed the no-op `-Remediate` switch and the simulated restore test.
