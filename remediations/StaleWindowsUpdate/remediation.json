@@ -1,0 +1,7 @@
+{
+  "displayName": "PowerShell Playbook - Stale Windows Update",
+  "description": "Detects no successful update install in 35 days or disabled update services; re-enables wuauserv/BITS and triggers a scan (installs stay under update-ring control).",
+  "runAsAccount": "system",
+  "runAs32Bit": false,
+  "schedule": "Daily"
+}

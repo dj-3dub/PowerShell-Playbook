@@ -1,0 +1,7 @@
+{
+  "displayName": "PowerShell Playbook - Teams cache size",
+  "description": "Detects a new Teams cache larger than 1 GB and clears it when Teams is not running (retries otherwise).",
+  "runAsAccount": "user",
+  "runAs32Bit": false,
+  "schedule": "Daily"
+}

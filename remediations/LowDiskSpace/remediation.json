@@ -1,0 +1,7 @@
+{
+  "displayName": "PowerShell Playbook - Low disk space",
+  "description": "Detects a system drive below 10% / 10 GB free and clears Windows temp, user temp, Windows Update download and Delivery Optimization caches (files older than 7 days).",
+  "runAsAccount": "system",
+  "runAs32Bit": false,
+  "schedule": "Daily"
+}

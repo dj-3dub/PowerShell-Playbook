@@ -87,7 +87,7 @@ all-reports: identity security ops
 
 # --- Lint & test ---
 lint:
-	$(PWSH) -NoProfile -Command "'./src','./scripts' | ForEach-Object { Invoke-ScriptAnalyzer -Path \$$_ -Recurse -Settings ./PSScriptAnalyzerSettings.psd1 -ReportSummary }"
+	$(PWSH) -NoProfile -Command "'./src','./scripts','./remediations' | ForEach-Object { Invoke-ScriptAnalyzer -Path \$$_ -Recurse -Settings ./PSScriptAnalyzerSettings.psd1 -ReportSummary }"
 
 test: lint
 	$(PWSH) -NoProfile -File ./Run-Tests.ps1
