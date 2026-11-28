@@ -21,9 +21,11 @@
         'Get-LocalAdminAudit'
         'Get-ServerRoleFeatureInventory'
         'Invoke-IntuneBaseline'
+        'Invoke-UserOffboarding'
         'Invoke-WinGetBaseline'
         'New-WinServerVmFromTemplate'
         'Send-PasswordExpiryNotifications'
+        'Undo-UserOffboarding'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
