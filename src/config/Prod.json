@@ -1,0 +1,8 @@
+{
+  "UseMockData": false,
+  "TenantName": "",
+  "ReportBranding": {
+    "TitlePrefix": "PowerShell Playbook",
+    "Author": ""
+  }
+}

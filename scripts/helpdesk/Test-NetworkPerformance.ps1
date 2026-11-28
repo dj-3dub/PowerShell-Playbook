@@ -34,7 +34,7 @@ $ErrorActionPreference = 'Stop'
 
 # Resolve paths for lightweight logging
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Collect-HelpdeskLogs use)
+# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Export-HelpdeskLogs use)
 $repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
 $logsRoot  = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'out') -ChildPath 'HelpdeskLogs'
 

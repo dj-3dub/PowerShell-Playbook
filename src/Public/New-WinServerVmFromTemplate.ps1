@@ -10,12 +10,6 @@ Deploy a Windows Server VM from a vSphere template, attach 4 vNICs, and create t
 - Optionally configures DHCP or static IPv4 on each team.
 - Optionally joins an AD domain (guest must have local admin GuestCredential).
 
-.REQUIREMENTS
-- PowerCLI (VMware.VimAutomation.Core)
-- VMware Tools installed in the Windows template
-- Windows Server guest that supports LBFO (New-NetLbfoTeam)
-- Guest local admin credentials (for in-guest config)
-
 .PARAMETER VCenter
 FQDN or IP of vCenter.
 
@@ -94,6 +88,12 @@ New-WinServerVmFromTemplate -VCenter vcsa.lab.local -VCenterCredential (Get-Cred
   -TeamAName ProdTeam -TeamAStaticIP 10.50.10.42 -TeamASubnetMask 255.255.255.0 -TeamAGateway 10.50.10.1 -TeamADns 10.50.10.10,10.50.10.11 `
   -TeamBName BackupTeam -TeamBStaticIP 10.60.10.42 -TeamBSubnetMask 255.255.255.0 -TeamBGateway 10.60.10.1 -TeamBDns 10.50.10.10,10.50.10.11 `
   -GuestCredential (Get-Credential 'Administrator') -Verbose
+.NOTES
+Requirements:
+- PowerCLI (VMware.VimAutomation.Core)
+- VMware Tools installed in the Windows template
+- Windows Server guest that supports LBFO (New-NetLbfoTeam)
+- Guest local admin credentials (for in-guest config)
 #>
     [CmdletBinding(SupportsShouldProcess)]
     param(

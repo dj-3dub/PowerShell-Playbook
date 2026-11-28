@@ -1,10 +1,24 @@
 function Invoke-WinGetBaseline {
+  <#
+  .SYNOPSIS
+  Audits (default) or installs (-Apply) a baseline set of WinGet packages on the local machine.
+
+  .PARAMETER Packages
+  WinGet package IDs. Default: Microsoft.WindowsTerminal, 7zip.7zip, Git.Git.
+
+  .PARAMETER Apply
+  Install missing packages (supports -WhatIf). Without it, missing packages are only reported.
+
+  .EXAMPLE
+  Invoke-WinGetBaseline -Packages Microsoft.PowerShell, Git.Git -Apply -WhatIf
+  #>
   [CmdletBinding(SupportsShouldProcess)]
   param(
     [string[]]$Packages=@("Microsoft.WindowsTerminal","7zip.7zip","Git.Git"),
     [switch]$Apply
   )
-  if (-not $IsWindows) { return }
+  # $IsWindows does not exist on Windows PowerShell 5.1 (which is always Windows).
+  if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { return }
 
   $winget=Get-Command winget -ErrorAction SilentlyContinue
   if(-not $winget){ return }

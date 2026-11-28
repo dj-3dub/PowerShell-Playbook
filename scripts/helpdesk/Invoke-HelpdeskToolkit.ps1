@@ -77,7 +77,7 @@ function Invoke-RepairWindowsUpdate {
 }
 
 function Invoke-CollectHelpdeskLogs {
-    $script = Join-Path $scriptDir 'Collect-HelpdeskLogs.ps1'
+    $script = Join-Path $scriptDir 'Export-HelpdeskLogs.ps1'
     if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
 
     $ticket = Read-Host "Enter Ticket ID (optional)"
@@ -331,7 +331,7 @@ function Invoke-UnlockAdAccount {
 }
 
 function Invoke-ForceAdPasswordReset {
-    $script = Join-Path $scriptDir 'Force-PasswordReset.ps1'
+    $script = Join-Path $scriptDir 'Reset-UserPassword.ps1'
     if (-not (Test-Path $script)) { Write-Warning "Missing: $script"; return }
 
     $user = Read-Host "Enter AD username/UPN to reset password"

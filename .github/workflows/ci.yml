@@ -37,7 +37,9 @@ jobs:
 
       - name: Lint (PSScriptAnalyzer)
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./src -Recurse -Severity Warning, Error
+          $results = foreach ($path in './src', './scripts') {
+            Invoke-ScriptAnalyzer -Path $path -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          }
           foreach ($r in $results) {
             $level = if ($r.Severity -eq 'Error') { 'error' } else { 'warning' }
             $file  = Resolve-Path -Relative $r.ScriptPath

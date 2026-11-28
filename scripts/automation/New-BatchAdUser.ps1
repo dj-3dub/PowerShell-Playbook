@@ -148,6 +148,11 @@ function Import-AdModule {
 }
 
 function New-UserFromRow {
+    # New-ADUser needs a SecureString. The plaintext comes from either the (discouraged, warned) CSV column
+    # or a password this script just generated and must show once for handoff, so the conversion is inherent.
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
+        Justification = 'Converts a just-generated or operator-supplied initial password for New-ADUser.')]
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $true)]
         [pscustomobject]$Row

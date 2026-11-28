@@ -17,7 +17,7 @@ param(
   [switch]$RunDism
 )
 
-function Ensure-ServiceRunning {
+function Start-RequiredService {
   $svc = Get-Service -Name WSearch -ErrorAction SilentlyContinue
   if (-not $svc) { Write-Warning "WSearch service not found."; return }
   if ($svc.Status -ne 'Running') {
@@ -38,7 +38,7 @@ if ($ResetIndex) {
       Rename-Item $edb "$($edb).bak-$(Get-Date -Format yyyyMMddHHmmss)" -Force
       Write-Host "Index database renamed; Windows will rebuild the index."
     }
-    Ensure-ServiceRunning
+    Start-RequiredService
   }
 }
 

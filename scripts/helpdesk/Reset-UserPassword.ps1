@@ -13,10 +13,10 @@
     Optional ticket identifier used in log naming.
 
 .EXAMPLE
-    .\Force-PasswordReset.ps1 -Identity jdoe
+    .\Reset-UserPassword.ps1 -Identity jdoe
 
 .EXAMPLE
-    .\Force-PasswordReset.ps1 -Identity jdoe@contoso.com -TicketId INC12345
+    .\Reset-UserPassword.ps1 -Identity jdoe@contoso.com -TicketId INC12345
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -31,7 +31,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
-# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Collect-HelpdeskLogs use)
+# <repo>/out/HelpdeskLogs (same folder the toolkit's log viewer and Export-HelpdeskLogs use)
 $repoRoot  = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
 $logsRoot  = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'out') -ChildPath 'HelpdeskLogs'
 

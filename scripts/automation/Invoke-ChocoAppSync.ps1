@@ -1,47 +1,77 @@
 <#
 .SYNOPSIS
-  Ensures Chocolatey is present, upgrades all packages, and optionally installs from packages.config.
+  Ensures Chocolatey is present, upgrades all packages, and optionally installs from a packages.config.
+
+.DESCRIPTION
+  1. Installs Chocolatey with the official bootstrap script if choco.exe is missing (or -ForceInstallChoco).
+  2. Runs 'choco upgrade all'.
+  3. If -PackagesConfig exists, runs 'choco install <file>' to ensure those packages are present.
+  Requires an elevated session. Supports -WhatIf. Exits with choco's exit code on failure.
+
 .PARAMETER PackagesConfig
   Path to a packages.config file to ensure installed.
+
 .PARAMETER ForceInstallChoco
-  Reinstall Chocolatey if already present.
+  Re-run the Chocolatey installer even if choco.exe is already present.
+
 .EXAMPLE
   .\Invoke-ChocoAppSync.ps1 -PackagesConfig .\packages.config -Verbose
+
+.EXAMPLE
+  .\Invoke-ChocoAppSync.ps1 -WhatIf
 #>
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
-  [string]$PackagesConfig = ".\packages.config",
+  [string]$PackagesConfig = '.\packages.config',
   [switch]$ForceInstallChoco
 )
 
-$global:chocoExe = "$env:ProgramData\chocolatey\bin\choco.exe"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$chocoExe = Join-Path $env:ProgramData 'chocolatey\bin\choco.exe'
 
 function Install-Chocolatey {
-  if (Test-Path $global:chocoExe -and -not $ForceInstallChoco) {
-    Write-Verbose "Chocolatey already installed."
+  if ((Test-Path $chocoExe) -and -not $ForceInstallChoco) {
+    Write-Verbose 'Chocolatey already installed.'
     return
   }
-  Write-Host "Installing Chocolatey..."
+  if (-not $PSCmdlet.ShouldProcess('Chocolatey', 'Install from community.chocolatey.org')) { return }
+
+  Write-Host 'Installing Chocolatey...'
+  # Official bootstrap (https://chocolatey.org/install). Organizations with an internal feed
+  # should install from that instead of the public script.
   Set-ExecutionPolicy Bypass -Scope Process -Force
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  $installer = (New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')
+  & ([scriptblock]::Create($installer))
 }
 
-function Choco {
-  param([string]$Args)
-  & $global:chocoExe $Args --no-progress -y | Write-Output
+function Invoke-Choco {
+  # Pass arguments as an array so each becomes its own token (e.g. 'upgrade', 'all').
+  param([Parameter(Mandatory)] [string[]]$ChocoArgs)
+  $line = "choco $($ChocoArgs -join ' ')"
+  if (-not $PSCmdlet.ShouldProcess($env:COMPUTERNAME, $line)) { return }
+
+  & $chocoExe @ChocoArgs --no-progress -y
+  # 0 = success; 1641/3010 = success, reboot required/initiated
+  if ($LASTEXITCODE -notin 0, 1641, 3010) {
+    Write-Error "$line failed with exit code $LASTEXITCODE"
+    exit $LASTEXITCODE
+  }
 }
 
 Install-Chocolatey
 
-Write-Host "Upgrading all Chocolatey packages..."
-Choco "upgrade all"
+Write-Host 'Upgrading all Chocolatey packages...'
+Invoke-Choco -ChocoArgs 'upgrade', 'all'
 
 if (Test-Path $PackagesConfig) {
   Write-Host "Ensuring packages in $PackagesConfig are installed..."
-  Choco "install $PackagesConfig"
-} else {
+  Invoke-Choco -ChocoArgs 'install', (Resolve-Path $PackagesConfig).ProviderPath
+}
+else {
   Write-Verbose "No packages.config found at $PackagesConfig"
 }
 
-Write-Host "Chocolatey sync complete."
+Write-Host 'Chocolatey sync complete.'

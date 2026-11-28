@@ -138,11 +138,11 @@ function Clear-BrowserCacheFolders {
         'Service Worker\ScriptCache'
     )
 
-    foreach ($profile in $profilePaths) {
-        Write-Verbose "Processing profile '$($profile.Name)' for $BrowserName..."
+    foreach ($browserProfile in $profilePaths) {
+        Write-Verbose "Processing profile '$($browserProfile.Name)' for $BrowserName..."
 
         foreach ($rel in $cacheRelative) {
-            $target = Join-Path $profile.FullName $rel
+            $target = Join-Path $browserProfile.FullName $rel
             if (Test-Path $target) {
                 Write-Verbose "Clearing cache path: '$target'"
                 if ($PSCmdlet.ShouldProcess($target, "Remove cache folder")) {

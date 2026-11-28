@@ -19,8 +19,8 @@ Describe 'Report generators' {
         Get-ChildItem $reports -Filter 'ConditionalAccess-*.html' | Should -Not -BeNullOrEmpty
     }
 
-    It 'creates a Local Admin HTML report' {
-        $null = Get-LocalAdminReport -OutputPath $reports 6>$null
+    It 'creates a Local Admin audit HTML report' {
+        $null = Get-LocalAdminAudit -OutputPath $reports
         Get-ChildItem $reports -Filter 'LocalAdmins-*.html' | Should -Not -BeNullOrEmpty
     }
 

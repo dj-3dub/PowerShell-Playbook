@@ -3,7 +3,7 @@
     RootModule = 'PowerShell-Playbook.Extensions.psm1'
 
     # Version number of this module.
-    ModuleVersion = '0.1.0'
+    ModuleVersion = '0.2.0'
 
     # ID used to uniquely identify this module
     GUID = '3f9b6e2a-7c4d-4f2b-9e1b-2c9a4d5f6e7a'
@@ -15,7 +15,7 @@
     CompanyName = 'PowerShell Playbook'
 
     # Copyright statement for this module
-    Copyright = '(c) Tim Heverin. All rights reserved.'
+    Copyright = '(c) 2025-2026 Tim Heverin. MIT License.'
 
     # Description of the functionality provided by this module
     Description = 'Extensions for PowerShell Playbook: extra reporters and cloud/hypervisor helpers.'
@@ -43,6 +43,7 @@
     PrivateData = @{ 
         PSData = @{ 
             Tags = 'PowerShell','Playbook','Extensions','Enterprise'
+            LicenseUri = 'https://github.com/dj-3dub/PowerShell-Playbook/blob/main/LICENSE'
             ProjectUri = 'https://github.com/dj-3dub/PowerShell-Playbook'
             ExternalModuleDependencies = @(
                 'Az.Accounts',

@@ -25,6 +25,6 @@ foreach ($m in $mods) {
         Write-Output "$m failed: $($_.Exception.Message)"
     }
 }
-Write-Output "\nSummary:"
+Write-Output "`nSummary:"
 $results | Format-Table -AutoSize
 return $results

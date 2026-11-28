@@ -20,9 +20,9 @@ AfterAll {
         Remove-Item -Force
 }
 
-Describe 'Force-PasswordReset.ps1' {
+Describe 'Reset-UserPassword.ps1' {
     BeforeAll {
-        $script = Join-Path $helpdesk 'Force-PasswordReset.ps1'
+        $script = Join-Path $helpdesk 'Reset-UserPassword.ps1'
     }
 
     BeforeEach {
