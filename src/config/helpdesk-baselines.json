@@ -1,0 +1,22 @@
+{
+  "Notes": "Estimated minutes a technician spends on each fix by hand (remote session, steps, verification). Tune these to your own ticket data; Get-ToolkitUsageReport uses them to estimate time saved.",
+  "ManualMinutes": {
+    "ResetPrinter": 15,
+    "ResetTeams": 20,
+    "ResetOutlook": 30,
+    "RepairNetwork": 20,
+    "RepairWindowsUpdate": 45,
+    "CollectLogs": 15,
+    "ResetBrowser": 20,
+    "MailboxCapacity": 20,
+    "OneDriveRepair": 30,
+    "VpnDiagnostics": 25,
+    "BitLockerHealth": 10,
+    "OutlookOstRepair": 40,
+    "PreflightChecks": 15,
+    "NetworkPerformance": 25,
+    "SignInHealth": 20,
+    "UnlockAccount": 10,
+    "PasswordReset": 10
+  }
+}

@@ -20,6 +20,7 @@
         'Get-InactiveAdAccounts'
         'Get-LocalAdminAudit'
         'Get-ServerRoleFeatureInventory'
+        'Get-ToolkitUsageReport'
         'Invoke-IntuneBaseline'
         'Invoke-UserOffboarding'
         'Invoke-WinGetBaseline'
