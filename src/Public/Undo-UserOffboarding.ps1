@@ -127,8 +127,7 @@ function Undo-UserOffboarding {
 
     New-Item -ItemType Directory -Force -Path $OutputPath -WhatIf:$false | Out-Null
     $base = Join-Path $OutputPath ("OffboardingUndo-{0}-{1}" -f $snap.SamAccountName, (Get-Date -Format 'yyyyMMdd-HHmmss'))
-    $csvLines = if ($PSVersionTable.PSVersion.Major -lt 6) { $rows | ConvertTo-Csv -NoTypeInformation } else { $rows | ConvertTo-Csv }
-    [IO.File]::WriteAllText("$base.csv", ($csvLines -join [Environment]::NewLine), [Text.Encoding]::UTF8)
+    $rows | Export-PlaybookCsv -Path "$base.csv"
     $meta = [ordered]@{ User = $upn; Ticket = $snap.TicketId; Snapshot = (Split-Path $SnapshotPath -Leaf); Result = $result }
     [IO.File]::WriteAllText("$base.html", (ConvertTo-ReportHtml -Title "Offboarding undo: $upn" -Data $rows -Meta $meta), [Text.Encoding]::UTF8)
     Write-ToolkitLog -Level Info -Message "Offboarding undo $($result.ToLower()): $upn" -Data @{ Snapshot = $SnapshotPath }

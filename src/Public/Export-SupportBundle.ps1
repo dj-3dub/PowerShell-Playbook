@@ -69,7 +69,7 @@ function Export-SupportBundle {
       # Level 1 = Critical, 2 = Error
       Get-WinEvent -FilterHashtable @{ LogName = $log; Level = 1, 2; StartTime = $since } -ErrorAction SilentlyContinue |
         Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, Message |
-        Export-Csv -Path $t -NoTypeInformation -Encoding UTF8
+        Export-PlaybookCsv -Path $t
     }
   }
 

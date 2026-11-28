@@ -116,8 +116,7 @@ function Get-ToolkitUsageReport {
 
     New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
     $base = Join-Path $OutputPath ('ToolkitUsage-{0}' -f (Get-Date -Format 'yyyyMMdd-HHmm'))
-    $csvLines = if ($PSVersionTable.PSVersion.Major -lt 6) { $rows | ConvertTo-Csv -NoTypeInformation } else { $rows | ConvertTo-Csv }
-    [IO.File]::WriteAllText("$base.csv", ($csvLines -join [Environment]::NewLine), [Text.Encoding]::UTF8)
+    $rows | Export-PlaybookCsv -Path "$base.csv"
 
     $title = 'Helpdesk Toolkit Usage'
     if ($Mock) { $title += ' (sample data)' }

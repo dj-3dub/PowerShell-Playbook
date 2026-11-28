@@ -41,7 +41,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path (Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src') 'Shared') 'ConvertTo-ReportHtml.ps1')
+# Report and CSV helpers shared with the modules.
+Get-ChildItem -Path (Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src') 'Shared') -Filter *.ps1 | ForEach-Object { . $_.FullName }
 
 if (-not (Test-Path $PolicyPath)) { throw "Policy file not found: $PolicyPath" }
 $policy = Get-Content $PolicyPath -Raw | ConvertFrom-Json
@@ -85,7 +86,7 @@ foreach ($p in $provisioned) {
 # The report is an audit record: write it even under -WhatIf.
 New-Item -ItemType Directory -Force -Path $ReportPath -WhatIf:$false -Confirm:$false | Out-Null
 $base = Join-Path $ReportPath ('Debloat-Appx-{0}' -f (Get-Date -Format 'yyyyMMdd-HHmm'))
-$rows | Export-Csv -Path "$base.csv" -NoTypeInformation -Encoding UTF8 -WhatIf:$false -Confirm:$false
+$rows | Export-PlaybookCsv -Path "$base.csv"
 $mode = if ($WhatIfPreference) { 'Audit (WhatIf)' } else { 'Remove' }
 ConvertTo-ReportHtml -Title 'Preinstalled App Removal' -Data $rows.ToArray() `
     -Meta ([ordered]@{ Mode = $mode; Policy = (Split-Path $PolicyPath -Leaf); Computer = $env:COMPUTERNAME }) |

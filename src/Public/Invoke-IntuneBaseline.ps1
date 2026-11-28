@@ -118,7 +118,7 @@ function Invoke-IntuneBaseline {
     $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
     $title = "Intune Baseline ($Environment)"
     if ($mock) { $title += ' [MOCK]' }
-    $results | Export-Csv -Path (Join-Path $OutputPath "IntuneBaseline-$stamp.csv") -NoTypeInformation -Encoding UTF8 -WhatIf:$false
+    $results | Export-PlaybookCsv -Path (Join-Path $OutputPath "IntuneBaseline-$stamp.csv")
     $html = Join-Path $OutputPath "IntuneBaseline-$stamp.html"
     ConvertTo-ReportHtml -Title $title -Data $results | Out-File -FilePath $html -Encoding UTF8 -WhatIf:$false
     Write-Information "Report: $html"

@@ -1,6 +1,6 @@
 ﻿@{
     RootModule        = 'PowerShellPlaybook.psm1'
-    ModuleVersion     = '0.3.0'
+    ModuleVersion     = '0.4.0'
     GUID              = 'ddac9f09-a122-4d87-b3ed-8cd8f1b47025'
 
     Author            = 'Tim Heverin'

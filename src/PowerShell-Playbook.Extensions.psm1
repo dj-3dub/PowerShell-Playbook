@@ -23,8 +23,8 @@
 
 Set-StrictMode -Version Latest
 
-# Report builder shared with the PowerShellPlaybook module.
-. (Join-Path (Join-Path $PSScriptRoot 'Shared') 'ConvertTo-ReportHtml.ps1')
+# Report and CSV helpers shared with the PowerShellPlaybook module.
+Get-ChildItem -Path (Join-Path $PSScriptRoot 'Shared') -Filter *.ps1 | ForEach-Object { . $_.FullName }
 
 # -----------------------------------------------------------------------------
 # Config (override in session: $m = Get-Module PowerShell-Playbook.Extensions; & $m { $script:PlaybookConfig.OutputRoot = 'D:\Reports' })
@@ -81,10 +81,7 @@ function Complete-PlaybookRun {
   if ($Mock) { $Title = "$Title (sample data)" }
   $csv  = Join-Path $OutDir "$Name.csv"
   $html = Join-Path $OutDir "$Name.html"
-  # -NoTypeInformation is required on 5.1 and obsolete (warns) on 7.x.
-  $csvArgs = @{ Path = $csv; Encoding = 'UTF8' }
-  if ($PSVersionTable.PSVersion.Major -lt 6) { $csvArgs.NoTypeInformation = $true }
-  $Rows | Export-Csv @csvArgs
+  $Rows | Export-PlaybookCsv -Path $csv
   New-PlaybookReport -Title $Title -Data $Rows -Meta $Meta -OutFile $html | Out-Null
   [pscustomobject]@{ Csv = $csv; Html = $html; Rows = $Rows }
 }

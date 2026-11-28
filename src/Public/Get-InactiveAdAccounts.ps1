@@ -64,7 +64,7 @@ function Get-InactiveAdAccounts {
     $csv = Join-Path $OutputPath ("InactiveAccounts-{0}.csv" -f $stamp)
     $html = Join-Path $OutputPath ("InactiveAccounts-{0}.html" -f $stamp)
 
-    $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
+    $rows | Export-PlaybookCsv -Path $csv
     ConvertTo-ReportHtml -Title "Inactive Accounts ($DaysInactive+ days)" -Data @($rows) `
         -Property SamAccountName, UPN, DisplayName, LastLogonDate `
         -Meta ([ordered]@{ Cutoff = $cutoff.ToString('yyyy-MM-dd'); Accounts = @($rows).Count }) |

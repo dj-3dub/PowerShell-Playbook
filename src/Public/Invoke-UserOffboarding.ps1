@@ -237,8 +237,7 @@ function Invoke-UserOffboarding {
 
     $csv  = Join-Path $OutputPath "Offboarding-$label-$stamp.csv"
     $html = Join-Path $OutputPath "Offboarding-$label-$stamp.html"
-    $csvLines = if ($PSVersionTable.PSVersion.Major -lt 6) { $rows | ConvertTo-Csv -NoTypeInformation } else { $rows | ConvertTo-Csv }
-    [IO.File]::WriteAllText($csv, ($csvLines -join [Environment]::NewLine), [Text.Encoding]::UTF8)
+    $rows | Export-PlaybookCsv -Path $csv
     $meta = [ordered]@{ User = $upn; Ticket = $TicketId; Delegate = $DelegateTo; Operator = $operator; Result = $result }
     [IO.File]::WriteAllText($html, (ConvertTo-ReportHtml -Title "Offboarding: $upn" -Data $rows -Meta $meta), [Text.Encoding]::UTF8)
 

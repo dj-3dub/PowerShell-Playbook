@@ -144,7 +144,7 @@ function Get-ServerRoleFeatureInventory {
             $csv = Join-Path $OutputPath "ServerRoles-$stamp.csv"
             $html = Join-Path $OutputPath "ServerRoles-$stamp.html"
 
-            $objects | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
+            $objects | Export-PlaybookCsv -Path $csv
 
             $sorted = @($objects | Sort-Object -Property ComputerName, Installed, DisplayName -Descending)
             ConvertTo-ReportHtml -Title 'Server Role/Feature Inventory' -Data $sorted `

@@ -194,7 +194,7 @@ function Get-LocalAdminAudit {
             $csv = Join-Path $OutputPath "LocalAdmins-$stamp.csv"
             $html = Join-Path $OutputPath "LocalAdmins-$stamp.html"
 
-            $data | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
+            $data | Export-PlaybookCsv -Path $csv
 
             $summary = @($data | Group-Object ComputerName, Status | ForEach-Object {
                     [pscustomobject]@{ ComputerName = $_.Group[0].ComputerName; Status = $_.Group[0].Status; Count = $_.Count }

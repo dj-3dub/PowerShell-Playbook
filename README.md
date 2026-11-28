@@ -5,18 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 PowerShell automation for the work that fills a service desk queue and an infrastructure team's week:
-repeatable endpoint repairs, identity triage, and health reports across Active Directory, Entra ID, Intune,
-Exchange Online, VMware, Azure and AWS.
+repeatable endpoint repairs, user offboarding, Intune remediations that fix problems before anyone calls,
+and health reports across Active Directory, Entra ID, Intune, Exchange Online, VMware, Azure and AWS.
+It also measures itself: every helpdesk fix is logged so you can report success rates and hours saved.
 
 It is built the way production tooling should be: every state-changing action supports `-WhatIf`,
 reports never fabricate data, everything runs on both Windows PowerShell 5.1 and PowerShell 7,
 and every change is linted and tested on Windows and Linux in CI.
 
-<p>
-  <img src="docs/images/helpdesk-toolkit-menu.png" alt="Helpdesk Toolkit menu" width="38%">
-  &nbsp;
-  <img src="docs/images/report-vmware-health.png" alt="VMware health report" width="58%">
-</p>
+<img src="docs/images/demo.gif" alt="Terminal demo: Intune baseline with -Enforce -WhatIf, toolkit usage totals, offboarding tests" width="100%">
+
+<sub>Real output recorded from this repo: an Intune baseline dry run, the toolkit usage report, and the offboarding test suite.</sub>
 
 ---
 
@@ -24,14 +23,18 @@ and every change is linted and tested on Windows and Linux in CI.
 
 | Component | Path | What it is for |
 |---|---|---|
-| **Helpdesk Toolkit** | `scripts/helpdesk/` | Menu-driven first-line fixes and diagnostics, run on the user's machine |
-| **`PowerShellPlaybook` module** | `src/` | Identity, security and endpoint reporting (AD, Entra ID, Intune, Exchange Online, Windows) |
+| **Helpdesk Toolkit** | `scripts/helpdesk/` | Menu-driven first-line fixes and diagnostics, run on the user's machine; every run is logged |
+| **Intune Remediations** | `remediations/` | Detect/fix script pairs Intune runs on every device on a schedule |
+| **`PowerShellPlaybook` module** | `src/` | Offboarding, identity, security and endpoint reporting (AD, Entra ID, Intune, Exchange Online, Windows), toolkit usage metrics |
 | **`PowerShell-Playbook.Extensions` module** | `src/` | Infrastructure and cloud health (patching, backups, vSphere, Azure/AWS, Microsoft 365) |
 | **Automation scripts** | `scripts/automation/`, `scripts/` | Standalone jobs: bulk user onboarding, standard software builds, AD exports, endpoint hardening |
 
 ### Helpdesk Toolkit
 
 `Invoke-HelpdeskToolkit.ps1` is a numbered menu over these scripts; each can also be run on its own.
+It asks for the ticket ID once per session.
+
+<img src="docs/images/helpdesk-toolkit-menu.png" alt="Helpdesk Toolkit menu" width="38%">
 
 | Repairs | Diagnostics | Identity |
 |---|---|---|
@@ -43,12 +46,42 @@ and every change is linted and tested on Windows and Linux in CI.
 | Chrome/Edge profile cache | Log bundle (ZIP, ticket-ID named) | |
 | OneDrive sync | | |
 
-Diagnostic and identity scripts log to `out/HelpdeskLogs/`, with the ticket ID in the file name when one is passed (`-TicketId INC12345`).
+Every fix run through the menu appends one JSON line to `out/HelpdeskLogs/toolkit-runs.jsonl`: fix, ticket,
+technician, duration and outcome (Success / Failed / Cancelled). See [Measuring impact](#measuring-impact).
+
+### Offboarding
+
+```powershell
+Invoke-UserOffboarding -Identity jdoe -TicketId CHG0012345 -WhatIf      # full plan, nothing changed
+Invoke-UserOffboarding -Identity jdoe -TicketId CHG0012345 -DisabledOU 'OU=Disabled Users,DC=corp,DC=local'
+Undo-UserOffboarding  -SnapshotPath .\reports\Offboarding-jdoe-CHG0012345-....snapshot.json
+```
+
+1. **Snapshot.** Before changing anything, it writes a JSON snapshot of the account: groups, OU, description, enabled state and mailbox settings.
+2. **Security steps first:**
+   - disable the AD account
+   - reset the password to a random value nobody knows
+   - revoke Entra ID sessions
+3. **Clean-up:**
+   - stamp the AD description with the date, ticket and operator
+   - remove group memberships
+   - move the account to the disabled OU
+4. **Hand-over:**
+   - convert the mailbox to shared, with an auto-reply, hidden from the address book
+   - give the manager Full Access to the mailbox and access to the OneDrive
+
+How it behaves:
+- **Every step is confirmable.** Each goes through `-WhatIf`/`-Confirm`.
+- **Missing connections don't fail the run.** A step whose cloud connection is missing is marked Skipped.
+- **One failure doesn't stop the rest.** A failed step is recorded and the remaining steps still run.
+- **Undo restores the snapshot.** `Undo-UserOffboarding` puts back everything recorded in it.
 
 ### `PowerShellPlaybook` module
 
 | Command | Purpose |
 |---|---|
+| `Invoke-UserOffboarding` / `Undo-UserOffboarding` | Leaver workflow across AD, Entra ID, Exchange Online and OneDrive, with snapshot-based undo |
+| `Get-ToolkitUsageReport` | Helpdesk Toolkit runs, success rate per fix and estimated hours saved |
 | `Get-InactiveAdAccounts` | Users with no logon in N days |
 | `Send-PasswordExpiryNotifications` | Builds per-user password-expiry notices and a summary (preview only; delivery is on the roadmap) |
 | `Get-ConditionalAccessReport` | Entra ID Conditional Access policies: state, scope, controls |
@@ -86,6 +119,36 @@ and accepts `-Mock` for sample data.
 
 <sub>Screenshots show real output from this repo run with <code>-Mock</code>; rows are tagged <code>Source = Mock</code> and titles say "sample data".</sub>
 
+### Intune Remediations
+
+Detection and remediation pairs in [`remediations/`](remediations/README.md), published to Intune with
+`Publish-IntuneRemediation.ps1` (Microsoft Graph, idempotent by display name):
+
+| Remediation | Detects | Fixes |
+|---|---|---|
+| `LowDiskSpace` | System drive under 10% / 10 GB free | Clears temp, Windows Update and Delivery Optimization caches (old files only) |
+| `TeamsCacheSize` | New Teams cache over 1 GB | Clears it only while Teams is closed |
+| `TimeSync` | W32Time stopped, no time source, or skew over 60 s | Restores domain/NTP sync and forces a resync |
+| `StaleWindowsUpdate` | No successful update in 35 days or update services disabled | Re-enables the services and triggers a scan |
+
+---
+
+## Measuring impact
+
+`Get-ToolkitUsageReport` turns the toolkit's run log into numbers a service desk manager cares about. For each fix it shows:
+- runs, success rate and average duration
+- **minutes saved**, against a per-fix manual-effort baseline you can tune (`src/config/helpdesk-baselines.json`)
+
+Fixes that fail often are flagged Warn or Fail, so you know which automation needs work.
+
+```powershell
+Get-ToolkitUsageReport -Since (Get-Date).AddDays(-30)
+```
+
+<img src="docs/images/report-toolkit-usage.png" alt="Helpdesk Toolkit usage report" width="80%">
+
+<sub>Generated with <code>-Mock</code> (deterministic sample data). Against a real run log, the same report shows your team's numbers.</sub>
+
 ---
 
 ## Quick start
@@ -105,6 +168,7 @@ Invoke-Item $r.Html                     # ./out/<date>/Get-VMwareHealth/...
 Import-Module ./src/PowerShellPlaybook.psd1
 Get-ConditionalAccessReport -Environment Dev
 Invoke-IntuneBaseline -Environment Dev -Enforce -WhatIf
+(Get-ToolkitUsageReport -Mock).Totals
 
 # Helpdesk menu (Windows)
 .\scripts\helpdesk\Invoke-HelpdeskToolkit.ps1
@@ -132,6 +196,8 @@ flowchart LR
     subgraph Endpoint["User's machine"]
         menu["Invoke-HelpdeskToolkit.ps1"] --> fixes["Repair-* / Reset-* / Test-* scripts"]
         fixes --> hlogs["out/HelpdeskLogs<br/>(ticket-named logs, ZIP)"]
+        menu --> runs["toolkit-runs.jsonl<br/>(fix, ticket, outcome, duration)"]
+        rem["Intune Remediations<br/>Detect.ps1 / Remediate.ps1"]
     end
 
     subgraph Admin["Admin workstation / jump host"]
@@ -142,7 +208,12 @@ flowchart LR
         ext --> reports
         core --> jsonl["logs/&lt;date&gt;/run.jsonl"]
         reports --> ticket["Publish-ReportToTicket"]
+        runs --> usage["Get-ToolkitUsageReport"]
+        pub["Publish-IntuneRemediation"]
     end
+
+    pub -. Graph .-> intune[("Intune")]
+    intune -. scheduled .-> rem
 
     core -. Graph / EXO / AD .-> m365[("Entra ID, Intune,<br/>Exchange Online, AD")]
     ext -. vendor modules .-> infra[("vSphere, Veeam, ConfigMgr,<br/>Azure, AWS, M365")]
@@ -155,8 +226,9 @@ flowchart LR
 **Safe by default.** Everything that changes state supports `-WhatIf` and `-Confirm`, and tests check that
 `-WhatIf` changes nothing. Repairs are as narrow as possible. For example, the Teams reset clears only the
 documented cache folders and leaves the install folder and the Outlook add-in alone, and the Windows Update
-reset renames its cache folders rather than deleting them. The identity scripts exit non-zero on failure, so RMM tools
-and scheduled tasks can tell a failed run from a successful one.
+reset renames its cache folders rather than deleting them. Offboarding snapshots the account first so it can
+be undone, and the Windows hardening scripts have `-Revert`. Scripts exit non-zero on failure, so RMM tools,
+Intune and scheduled tasks can tell a failed run from a successful one.
 
 **Never invent data.** A report either queries the live system or says it could not
 (`Status = NotConnected`, with the command to fix it). Sample data appears only when explicitly requested
@@ -170,8 +242,15 @@ account, requires a change at first logon, and never writes generated passwords 
 **Runs where the tickets are.** Stock Windows endpoints ship Windows PowerShell 5.1, so all code is
 5.1-compatible. CI enforces this with `PSUseCompatibleSyntax`.
 
-**Readable output.** Reports share one status model (OK / Warn / Fail) with colour-coded HTML and a CSV
-for each, and the run log is JSON Lines that can be sent straight to a SIEM.
+**Fix it before the ticket.** Recurring issues (disk space, Teams cache, clock drift, stalled updates) are
+handled fleet-wide by Intune Remediations. Those scripts are conservative by design: they never close an app
+the user is in, and they leave heavy repairs to a technician.
+
+**Measure it.** Every toolkit fix is logged, so the value of the automation is a report, not an anecdote.
+
+**Readable output.** Every report in both modules comes from one shared builder (`src/Shared`). They share a
+status model (OK / Warn / Fail), colour-coded HTML and a CSV each, and the logs are JSON Lines that can go
+straight to a SIEM.
 
 ---
 
@@ -187,13 +266,18 @@ make lint          # PSScriptAnalyzer only
 
 GitHub Actions runs on **Windows and Ubuntu** for every pull request:
 
-- **PSScriptAnalyzer** over `src/` and `scripts/` with shared settings (`PSScriptAnalyzerSettings.psd1`); errors fail the build
+- **PSScriptAnalyzer** over `src/`, `scripts/` and `remediations/` with shared settings (`PSScriptAnalyzerSettings.psd1`); errors fail the build
 - **Windows PowerShell 5.1 syntax compatibility** check across the repo
-- **Pester** (about 150 tests):
+- **Pester** (about 230 tests):
   - Every PowerShell file parses.
-  - Every exported command has help.
+  - Every exported command and hardening script has help.
   - Manifests match the code.
-  - Behavior tests use Pester mocks in place of AD, Azure, Veeam and user-profile paths, so the live code paths run without real infrastructure. Examples: a password reset under `-WhatIf` changes nothing, a failed reset exits 1, Azure disks are graded correctly, and Veeam jobs are checked against the RPO.
+  - No script has a switch that defaults to on.
+  - Behavior tests use Pester mocks in place of AD, Graph, Exchange Online, SharePoint, Azure, Veeam, Windows services, `w32tm`, Windows Update COM and user-profile paths, so the live code paths run without real infrastructure. Examples:
+    - offboarding under `-WhatIf` changes nothing
+    - undo restores every recorded group
+    - the Teams remediation waits while Teams is open
+    - the usage report's time-saved maths
 - Test runs write only to Pester's `TestDrive`, never into the repo
 
 ---
@@ -204,11 +288,13 @@ GitHub Actions runs on **Windows and Ubuntu** for every pull request:
 src/
   PowerShellPlaybook.psd1/.psm1          Core module (exports src/Public/*)
   PowerShell-Playbook.Extensions.*       Infrastructure and cloud module
-  Public/  Private/  config/             Exported commands, helpers, per-environment config
+  Public/  Private/  config/             Exported commands, helpers, per-environment config and baselines
+  Shared/                                Report and CSV helpers used by both modules
 scripts/
   helpdesk/                              Helpdesk Toolkit menu and its scripts
   automation/                            Standalone jobs (onboarding, builds, repairs)
-  *.ps1                                  AD export, endpoint hardening, module staging
+  *.ps1                                  AD export, Windows 11 hardening, module staging
+remediations/                            Intune detection/remediation pairs and their publisher
 config/                                  Software build and app-removal policies
 tests/                                   Pester suite
 docs/                                    Script notes and screenshots
@@ -230,7 +316,7 @@ Other automation scripts are described in [docs/automation-scripts.md](docs/auto
 - Email delivery for `Send-PasswordExpiryNotifications` (Microsoft Graph `Send-MgUserMail`)
 - GPO / RSoP troubleshooting in the Helpdesk Toolkit
 - Publish the modules to an internal PowerShell repository from CI on tagged releases
-- Bring the older `PowerShellPlaybook` reports onto the shared OK / Warn / Fail report builder
+- Feed Intune remediation results (Graph `deviceHealthScriptStates`) into the usage report
 
 ## License
 
