@@ -34,14 +34,15 @@ The Windows Update repair and log bundle live in the Helpdesk Toolkit
 
 ## Windows 11 hardening and debloat (`scripts/`)
 
-These scripts have no comment-based help yet. Read the `param()` block before running them.
+All four audit first and support `-WhatIf`; the setting scripts have `-Revert`. For managed devices, prefer
+Intune or Group Policy. These suit standalone builds, labs and unmanaged machines.
 
-| Script | Purpose |
-|---|---|
-| `Invoke-Win11Debloat.ps1` | Orchestrates the three below. `-Mode Audit` (default) reports; `-Mode Remove` applies |
-| `Remove-PreinstalledApps.ps1` | Remove Appx packages matching `config/debloat-appx.json` (keep/remove patterns) |
-| `Set-ConsumerExperience.ps1` | Disable consumer features (suggested apps, tips) via policy registry keys |
-| `Set-EnterpriseDefaults.ps1` | Disable Remote Assistance, Xbox services, and set telemetry to Basic |
+| Script | Purpose | Example |
+|---|---|---|
+| `Invoke-Win11Debloat.ps1` | Runs the three below. `-Mode Audit` (default) shows the plan and writes the report; `-Mode Remove` applies | `.\Invoke-Win11Debloat.ps1` |
+| `Remove-PreinstalledApps.ps1` | Remove Appx packages matching `config/debloat-appx.json` (keep-list always wins); report shows each package's outcome | `.\Remove-PreinstalledApps.ps1 -AllUsers -WhatIf` |
+| `Set-ConsumerExperience.ps1` | Turn off suggested apps, Spotlight, tips and widgets news via policy; `-Revert` removes the values | `.\Set-ConsumerExperience.ps1 -Revert` |
+| `Set-EnterpriseDefaults.ps1` | Disable unsolicited Remote Assistance and Xbox services, set telemetry to Required; pick with `-Setting`, undo with `-Revert` | `.\Set-EnterpriseDefaults.ps1 -Setting Telemetry` |
 
 ## Module tooling (`scripts/`)
 

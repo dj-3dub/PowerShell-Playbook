@@ -19,7 +19,7 @@ function ConvertTo-ReportHtml {
     )
 
     $classOf = [ordered]@{
-        ok   = 'OK', 'Done', 'Compliant', 'Allowed', 'Success', 'Restored'
+        ok   = 'OK', 'Done', 'Compliant', 'Allowed', 'Success', 'Restored', 'Removed'
         warn = 'Warn', 'Stale', 'Skipped', 'Planned', 'Expiring'
         fail = 'Fail', 'Failed', 'NonCompliant', 'Unexpected', 'Expired'
     }
